@@ -71,14 +71,14 @@ func ToCode(c Codeable, opts ...*ToCodeOption) string {
 	return w.out.String()
 }
 
-func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
+func WriteToFileStr(filename string, c Codeable, opts ...*ToCodeOption) (string, error) {
 	opt := MergeToCodeOpt(opts...)
 	if opt.pkgTool == nil {
 		opt.pkgTool = NewDefaultPkgTool()
 	}
 	err := os.MkdirAll(filepath.Dir(filename), 0755)
 	if err != nil {
-		return errors.Wrap(err, "failed to create directory")
+		return "", errors.Wrap(err, "failed to create directory")
 	}
 	buffer := &bytes.Buffer{}
 	pkgName := "main"
@@ -87,12 +87,12 @@ func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
 	}
 	_, err = fmt.Fprintln(buffer, "package", pkgName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	_, err = fmt.Fprintln(buffer)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	codeStr := ToCode(c, opt)
@@ -109,28 +109,28 @@ func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
 		sort.Strings(aliases)
 		_, err = fmt.Fprintln(buffer, "import (")
 		if err != nil {
-			return err
+			return "", err
 		}
 		for _, alias := range aliases {
 			_, err = fmt.Fprintf(buffer, "\t%s %q\n", alias, byAlias[alias])
 			if err != nil {
-				return err
+				return "", err
 			}
 		}
 
 		_, err = fmt.Fprintln(buffer, ")")
 		if err != nil {
-			return err
+			return "", err
 		}
 		_, err = fmt.Fprintln(buffer, "")
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	_, err = buffer.WriteString(codeStr)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	bytes := buffer.Bytes()
@@ -139,12 +139,20 @@ func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
 		if err != nil {
 			err1 := ioutil.WriteFile(filename, buffer.Bytes(), 0644)
 			if err1 != nil {
-				return errors.Wrapf(err1, "failed to write %s", filename)
+				return "", errors.Wrapf(err1, "failed to write %s", filename)
 			}
-			return err
+			return "", err
 		}
 	}
-	err = ioutil.WriteFile(filename, bytes, 0644)
+	return string(bytes), nil
+}
+
+func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
+	str, err := WriteToFileStr(filename, c, opts...)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(filename, []byte(str), 0644)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write %s", filename)
 	}
