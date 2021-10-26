@@ -71,21 +71,48 @@ func ToCode(c Codeable, opts ...*ToCodeOption) string {
 	return w.out.String()
 }
 
-func WriteToFileStr(filename string, c Codeable, opts ...*ToCodeOption) (string, error) {
+func GetImports(pkgTool PkgTool) ([]string, error) {
+	m := pkgTool.PkgAliasMap()
+	res := make([]string, 0)
+	if len(m) > 0 {
+		byAlias := make(map[string]string, len(m))
+		aliases := make([]string, 0, len(m))
+
+		for path, alias := range m {
+			aliases = append(aliases, alias)
+			byAlias[alias] = path
+		}
+
+		sort.Strings(aliases)
+		for _, alias := range aliases {
+			res = append(res, fmt.Sprintf("%s %q", alias, byAlias[alias]))
+		}
+	}
+	return res, nil
+}
+
+func GetImportStr(pkgTool PkgTool) (string, error) {
+	imports, err := GetImports(pkgTool)
+	if err != nil {
+		return "", err
+	}
+	if len(imports) > 0 {
+		return fmt.Sprintf("import (\n\t%s\n)", strings.Join(imports, "\n\t")), nil
+	}
+	return "", nil
+}
+
+func WriteToFileStr(c Codeable, opts ...*ToCodeOption) (string, error) {
 	opt := MergeToCodeOpt(opts...)
 	if opt.pkgTool == nil {
 		opt.pkgTool = NewDefaultPkgTool()
-	}
-	err := os.MkdirAll(filepath.Dir(filename), 0755)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to create directory")
 	}
 	buffer := &bytes.Buffer{}
 	pkgName := "main"
 	if opt.pkgName != nil {
 		pkgName = *opt.pkgName
 	}
-	_, err = fmt.Fprintln(buffer, "package", pkgName)
+	_, err := fmt.Fprintln(buffer, "package", pkgName)
 	if err != nil {
 		return "", err
 	}
@@ -97,32 +124,12 @@ func WriteToFileStr(filename string, c Codeable, opts ...*ToCodeOption) (string,
 
 	codeStr := ToCode(c, opt)
 
-	if len(opt.pkgTool.PkgAliasMap()) > 0 {
-		byAlias := make(map[string]string, len(opt.pkgTool.PkgAliasMap()))
-		aliases := make([]string, 0, len(opt.pkgTool.PkgAliasMap()))
-
-		for path, alias := range opt.pkgTool.PkgAliasMap() {
-			aliases = append(aliases, alias)
-			byAlias[alias] = path
-		}
-
-		sort.Strings(aliases)
-		_, err = fmt.Fprintln(buffer, "import (")
-		if err != nil {
-			return "", err
-		}
-		for _, alias := range aliases {
-			_, err = fmt.Fprintf(buffer, "\t%s %q\n", alias, byAlias[alias])
-			if err != nil {
-				return "", err
-			}
-		}
-
-		_, err = fmt.Fprintln(buffer, ")")
-		if err != nil {
-			return "", err
-		}
-		_, err = fmt.Fprintln(buffer, "")
+	importStr, err := GetImportStr(opt.pkgTool)
+	if err != nil {
+		return "", err
+	}
+	if len(importStr) > 0 {
+		_, err = fmt.Fprintf(buffer, "\n%s\n", importStr)
 		if err != nil {
 			return "", err
 		}
@@ -134,25 +141,34 @@ func WriteToFileStr(filename string, c Codeable, opts ...*ToCodeOption) (string,
 	}
 
 	bytes := buffer.Bytes()
-	if opt.noPretty == nil || *opt.noPretty == false {
-		bytes, err = imports.Process(filename, bytes, &imports.Options{FormatOnly: true, Comments: true, TabIndent: true, TabWidth: 8})
-		if err != nil {
-			err1 := ioutil.WriteFile(filename, buffer.Bytes(), 0644)
-			if err1 != nil {
-				return "", errors.Wrapf(err1, "failed to write %s", filename)
-			}
-			return "", err
-		}
-	}
 	return string(bytes), nil
 }
 
 func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
-	str, err := WriteToFileStr(filename, c, opts...)
+	opt := MergeToCodeOpt(opts...)
+	if opt.pkgTool == nil {
+		opt.pkgTool = NewDefaultPkgTool()
+	}
+	err := os.MkdirAll(filepath.Dir(filename), 0755)
+	if err != nil {
+		return errors.Wrap(err, "failed to create directory")
+	}
+	str, err := WriteToFileStr(c, opt)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filename, []byte(str), 0644)
+	bytes := []byte(str)
+	if opt.noPretty == nil || *opt.noPretty == false {
+		bytes, err = imports.Process(filename, bytes, &imports.Options{FormatOnly: true, Comments: true, TabIndent: true, TabWidth: 8})
+		if err != nil {
+			err1 := ioutil.WriteFile(filename, []byte(str), 0644)
+			if err1 != nil {
+				return errors.Wrapf(err1, "failed to write %s", filename)
+			}
+			return err
+		}
+	}
+	err = ioutil.WriteFile(filename, bytes, 0644)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write %s", filename)
 	}
