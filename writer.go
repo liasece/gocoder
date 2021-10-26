@@ -446,7 +446,12 @@ func (w *tWriter) PtrCheckerToCode(t PtrChecker) {
 		}
 	}
 	if len(ptrValues) > 0 {
-		src := ptrValues[0].Equal(NewValueNil())
+		var src Value
+		if t.GetIfNotNil() {
+			src = ptrValues[0].NE(NewValueNil())
+		} else {
+			src = ptrValues[0].Equal(NewValueNil())
+		}
 		for i := 1; i < len(ptrValues); i++ {
 			if t.GetIfNotNil() {
 				src = src.And(ptrValues[i].NE(NewValueNil()))
