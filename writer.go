@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -440,7 +441,7 @@ func (w *tWriter) NoteToCode(t Note) {
 func (w *tWriter) PtrCheckerToCode(t PtrChecker) {
 	ptrValues := make([]Value, 0, len(t.GetCheckerValue()))
 	for _, v := range t.GetCheckerValue() {
-		if v.IsPtr() {
+		if v.IsPtr() || v.Type() == nil || v.Type().Kind() == reflect.Slice || v.Type().Kind() == reflect.Map {
 			ptrValues = append(ptrValues, v)
 		}
 	}
