@@ -35,6 +35,7 @@ func MergeSetOpt(opts ...*SetOption) *SetOption {
 type ToCodeOption struct {
 	pkgTool  PkgTool
 	pkgName  *string
+	pkgPath  *string
 	noPretty *bool
 }
 
@@ -52,6 +53,11 @@ func (o *ToCodeOption) PkgTool(v PkgTool) *ToCodeOption {
 // PkgTool func
 func (o *ToCodeOption) PkgName(v string) *ToCodeOption {
 	o.pkgName = &v
+	return o
+}
+
+func (o *ToCodeOption) PkgPath(v string) *ToCodeOption {
+	o.pkgPath = &v
 	return o
 }
 
@@ -73,6 +79,9 @@ func MergeToCodeOpt(opts ...*ToCodeOption) *ToCodeOption {
 		}
 		if opt.pkgName != nil {
 			res.pkgName = opt.pkgName
+		}
+		if opt.pkgPath != nil {
+			res.pkgPath = opt.pkgPath
 		}
 		if opt.noPretty != nil {
 			res.noPretty = opt.noPretty

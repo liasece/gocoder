@@ -115,10 +115,10 @@ func pkgFunc(funcI interface{}) Value {
 	pcName := pc.Name()
 	pkg := ""
 	funcName := pcName
-	pcNameSli := strings.Split(pcName, ".")
-	if len(pcNameSli) == 2 {
-		pkg = pcNameSli[0]
-		funcName = pcNameSli[1]
+	i := strings.LastIndex(pcName, ".")
+	if i >= 0 {
+		pkg = pcName[:i]
+		funcName = pcName[i:]
 	}
 	_, name := filepath.Split(pcName)
 	valueName := pcName

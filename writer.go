@@ -3,6 +3,7 @@ package gocoder
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 // PkgTool interface
 type PkgTool interface {
 	PkgAlias(pkgPath string) string
+	SetPkgAlias(pkgPath string, alias string) error
 	PkgAliasMap() map[string]string
 }
 
@@ -104,45 +106,52 @@ func GetImportStr(pkgTool PkgTool) (string, error) {
 }
 
 func WriteToFileStr(c Codeable, opts ...*ToCodeOption) (string, error) {
+	buffer := &bytes.Buffer{}
+	err := Write(buffer, c, opts...)
+	if err != nil {
+		return "", err
+	}
+	return buffer.String(), nil
+}
+
+func Write(w io.Writer, c Codeable, opts ...*ToCodeOption) error {
 	opt := MergeToCodeOpt(opts...)
 	if opt.pkgTool == nil {
 		opt.pkgTool = NewDefaultPkgTool()
 	}
-	buffer := &bytes.Buffer{}
 	pkgName := "main"
 	if opt.pkgName != nil {
 		pkgName = *opt.pkgName
 	}
-	_, err := fmt.Fprintln(buffer, "package", pkgName)
+	_, err := fmt.Fprintln(w, "package", pkgName)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	_, err = fmt.Fprintln(buffer)
+	_, err = fmt.Fprintln(w)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	codeStr := ToCode(c, opt)
 
 	importStr, err := GetImportStr(opt.pkgTool)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if len(importStr) > 0 {
-		_, err = fmt.Fprintf(buffer, "\n%s\n", importStr)
+		_, err = fmt.Fprintf(w, "\n%s\n", importStr)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
-	_, err = buffer.WriteString(codeStr)
+	_, err = w.Write([]byte(codeStr))
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	bytes := buffer.Bytes()
-	return string(bytes), nil
+	return nil
 }
 
 func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
@@ -670,6 +679,13 @@ func (w *tWriter) ParenthesesTypes(vs ...Type) {
 
 // AddStr func
 func (w *tWriter) AddStr(strs ...interface{}) {
+	noNil := make([]interface{}, 0, len(strs))
+	for _, v := range strs {
+		if v != nil {
+			noNil = append(noNil, v)
+		}
+	}
+	strs = noNil
 	str := fmt.Sprint(strs...)
 	if str != "" {
 		if w.IsHead() {
