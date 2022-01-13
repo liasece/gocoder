@@ -6,6 +6,16 @@ import (
 	"github.com/liasece/gocoder"
 )
 
+// Error func
+func Error() gocoder.Type {
+	return gocoder.NewTypeName("error")
+}
+
+// Context func
+func Context() gocoder.Type {
+	return gocoder.NewTypeDetail("context", "Context")
+}
+
 // I func
 func I(i interface{}) gocoder.Type {
 	return gocoder.NewTypeI(i)

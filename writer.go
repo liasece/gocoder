@@ -88,7 +88,11 @@ func GetImports(pkgTool PkgTool) ([]string, error) {
 
 		sort.Strings(aliases)
 		for _, alias := range aliases {
-			res = append(res, fmt.Sprintf("%s %q", alias, byAlias[alias]))
+			if filepath.Base(byAlias[alias]) == alias {
+				res = append(res, fmt.Sprintf("%q", byAlias[alias]))
+			} else {
+				res = append(res, fmt.Sprintf("%s %q", alias, byAlias[alias]))
+			}
 		}
 	}
 	return res, nil
@@ -205,6 +209,13 @@ func (w *tWriter) WriteCode(c Codeable) {
 		}
 		w.Add(is...)
 		w.Line("}")
+	case Interface:
+		w.Line("type ", t.GetName(), " interface {")
+		fs := t.GetFuncs()
+		for _, v := range fs {
+			w.InterfaceFuncToCode(v)
+		}
+		w.Line("}")
 	case Field:
 		is := []interface{}{t.GetName(), " ", t.GetType()}
 		if t.GetTag() != "" {
@@ -221,7 +232,7 @@ func (w *tWriter) WriteCode(c Codeable) {
 		if t.GetNamed() != "" {
 			w.AddStr(t.GetNamed() + " ")
 		}
-		w.Add(str)
+		w.Add(str, t.GetNext())
 	case Value:
 		w.ValueToCode(t)
 	case If:
@@ -233,7 +244,11 @@ func (w *tWriter) WriteCode(c Codeable) {
 	case PtrChecker:
 		w.PtrCheckerToCode(t)
 	case Arg:
-		w.Add(t.GetName(), " ", t.GetType())
+		if t.GetVariableLength() {
+			w.Add(t.GetName(), " ...", t.GetType())
+		} else {
+			w.Add(t.GetName(), " ", t.GetType())
+		}
 	case Func:
 		w.FuncToCode(t)
 	case ForRange:
@@ -418,6 +433,25 @@ func (w *tWriter) FuncToCode(t Func) {
 	}
 }
 
+func (w *tWriter) InterfaceFuncToCode(t Func) {
+	if t.GetType() == FuncTypeInline {
+		panic("inline func can't be interface method")
+	}
+	if t.GetName() != "" {
+		w.AddStr(" ")
+		w.Add(t.GetName())
+	}
+	w.ParenthesesArgs(t.GetArgs()...)
+	if len(t.GetReturns()) > 1 {
+		w.AddStr(" ")
+		w.ParenthesesTypes(t.GetReturns()...)
+	} else if len(t.GetReturns()) > 0 {
+		w.AddStr(" ")
+		w.Add(t.GetReturns()[0])
+	}
+	w.Line()
+}
+
 func (w *tWriter) IfToCode(t BaseIf) {
 	if t.Pre() != nil {
 		w.Add("else ")
@@ -530,9 +564,24 @@ func (w *tWriter) AddCompact(is ...interface{}) {
 	w.add(false, is...)
 }
 
+// IsNil check interface is nil, like IsNil((*int)(nil)) == true
+func IsNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	defer func() {
+		_ = recover()
+	}()
+	vi := reflect.ValueOf(i)
+	return vi.IsNil()
+}
+
 // Add func
 func (w *tWriter) add(interval bool, is ...interface{}) {
 	for _, i := range is {
+		if IsNil(i) {
+			continue
+		}
 		if w.IsHead() && w.needIndent {
 			w.AddStr(strings.Repeat("\t", w.indent))
 			w.needIndent = false

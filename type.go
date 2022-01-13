@@ -28,6 +28,7 @@ type Type interface {
 	Name() string
 	GetNamed() string
 	SetNamed(string)
+	GetNext() Type
 
 	InterfaceForType() bool
 }
@@ -38,6 +39,7 @@ type tType struct {
 	Pkg    string
 	Struct Struct
 	Named  string
+	Next   Type
 }
 
 func (t *tType) WriteCode(w Writer) {
@@ -80,8 +82,9 @@ func (t *tType) TackPtr() Type {
 	if t.Type == nil {
 		if !strings.HasPrefix(t.Str, "*") {
 			return &tType{
-				Str:    "*" + t.Str,
+				Str:    "*",
 				Struct: t.Struct,
+				Next:   t,
 			}
 		}
 		return t
@@ -98,8 +101,9 @@ func (t *tType) TackPtr() Type {
 func (t *tType) Slice() Type {
 	if t.Type == nil {
 		return &tType{
-			Str:    "[]" + t.Str,
+			Str:    "[]",
 			Struct: t.Struct,
+			Next:   t,
 		}
 	}
 	if t.Kind() != reflect.Ptr {
@@ -175,6 +179,10 @@ func (t *tType) Name() string {
 
 func (t *tType) GetNamed() string {
 	return t.Named
+}
+
+func (t *tType) GetNext() Type {
+	return t.Next
 }
 
 func (t *tType) SetNamed(v string) {

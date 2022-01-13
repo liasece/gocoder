@@ -8,13 +8,15 @@ type Arg interface {
 	GetName() string
 	GetType() Type
 	GetValue() Value
+	GetVariableLength() bool
 
 	InterfaceForArg() bool
 }
 
 type tArg struct {
-	Name string
-	Type Type
+	Name           string
+	Type           Type
+	VariableLength bool
 }
 
 func (t *tArg) WriteCode(w Writer) {
@@ -31,6 +33,10 @@ func (t *tArg) GetName() string {
 
 func (t *tArg) GetType() Type {
 	return t.Type
+}
+
+func (t *tArg) GetVariableLength() bool {
+	return t.VariableLength
 }
 
 func (t *tArg) GetValue() Value {

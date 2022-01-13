@@ -120,6 +120,11 @@ func Struct(name string, fs ...gocoder.Field) gocoder.Struct {
 	return gocoder.NewStruct(name, fs)
 }
 
+// Interface func
+func Interface(name string, fs ...gocoder.Func) gocoder.Interface {
+	return gocoder.NewInterface(name, fs)
+}
+
 // Field func
 func Field(name string, typ interface{}, tag string) gocoder.Field {
 	return gocoder.NewField(name, Type(typ), tag)
@@ -127,7 +132,12 @@ func Field(name string, typ interface{}, tag string) gocoder.Field {
 
 // Arg func
 func Arg(name string, i interface{}) gocoder.Arg {
-	return gocoder.NewArg(name, Type(i))
+	return gocoder.NewArg(name, Type(i), false)
+}
+
+// ArgVar func
+func ArgVar(name string, i interface{}) gocoder.Arg {
+	return gocoder.NewArg(name, Type(i), true)
 }
 
 // Args func
@@ -146,10 +156,10 @@ func Args(argsI ...interface{}) []gocoder.Arg {
 				args = append(args, v.ToArg())
 			}
 		case gocoder.Type:
-			args = append(args, gocoder.NewArg("", v))
+			args = append(args, gocoder.NewArg("", v, false))
 		case []gocoder.Type:
 			for _, v := range v {
-				args = append(args, gocoder.NewArg("", v))
+				args = append(args, gocoder.NewArg("", v, false))
 			}
 		default:
 			panic(fmt.Sprint("Args unknown type: ", reflect.TypeOf(v).String()))

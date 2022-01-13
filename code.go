@@ -269,10 +269,11 @@ func NewArgI(name string, i interface{}) Arg {
 }
 
 // NewArg func
-func NewArg(name string, typ Type) Arg {
+func NewArg(name string, typ Type, variableLength bool) Arg {
 	return &tArg{
-		Name: name,
-		Type: typ,
+		Name:           name,
+		Type:           typ,
+		VariableLength: variableLength,
 	}
 }
 
@@ -301,6 +302,14 @@ func NewStruct(name string, fs []Field) Struct {
 	return &tStruct{
 		ReName: name,
 		Fields: fs,
+	}
+}
+
+// NewInterface func
+func NewInterface(name string, fs []Func) Interface {
+	return &tInterface{
+		ReName: name,
+		Funcs:  fs,
 	}
 }
 
