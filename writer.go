@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -227,7 +228,7 @@ func (w *tWriter) WriteCode(c Codeable) {
 	case Type:
 		str := typeStringOut(t, w.pkgTool)
 		if str == "" {
-			panic("typeStringOut str == \"\"")
+			log.Panic("typeStringOut str == \"\"", log.Reflect("t", t))
 		}
 		if t.GetNamed() != "" {
 			w.AddStr(t.GetNamed() + " ")
@@ -262,6 +263,14 @@ func (w *tWriter) WriteCode(c Codeable) {
 	}
 }
 
+func isValidPkgName(str string) bool {
+	ok, err := regexp.Match("^[_a-zA-Z]([_a-zA-Z0-9])*$", []byte(str))
+	if err != nil {
+		log.Panic("isValidPkgName error", log.ErrorField(err))
+	}
+	return ok
+}
+
 // Line func
 func (w *tWriter) ValueToCode(t Value) {
 	if t.GetIType() != nil {
@@ -276,7 +285,7 @@ func (w *tWriter) ValueToCode(t Value) {
 				w.AddStr(".")
 			}
 			name := t.GetName()
-			if li := strings.Split(name, "."); len(li) == 2 {
+			if li := strings.Split(name, "."); len(li) == 2 && isValidPkgName(li[0]) {
 				ms := w.pkgTool.PkgAliasMap()
 				find := false
 				for _, v := range ms {
@@ -303,7 +312,7 @@ func (w *tWriter) ValueToCode(t Value) {
 		case t.GetValues() != nil:
 			w.ListValues(t.GetValues()...)
 		case t.Type() != nil:
-			w.Add(typeStringOut(t.Type(), w.pkgTool))
+			w.Add(t.Type())
 		default:
 			panic(fmt.Errorf("unknown value: %+v", t))
 		}
