@@ -140,7 +140,11 @@ func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]reflect.St
 			typeStr = se.Name
 		}
 		if se, ok := astType.(*ast.ArrayType); ok {
-			typeStr = se.Elt.(*ast.Ident).Name
+			if tmp, ok := se.Elt.(*ast.StarExpr); ok {
+				typeStr = tmp.X.(*ast.Ident).Name
+			} else {
+				typeStr = se.Elt.(*ast.Ident).Name
+			}
 			isSlice = true
 		}
 		if typeStr == "" {
