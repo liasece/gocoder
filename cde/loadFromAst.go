@@ -14,6 +14,15 @@ import (
 	"github.com/liasece/log"
 )
 
+var InterfaceType reflect.Type
+
+func init() {
+	type T struct {
+		A interface{}
+	}
+	InterfaceType = reflect.ValueOf(T{}).Field(0).Type()
+}
+
 // wrap a function to fulfill ast.Visitor interface
 type walker func(ast.Node) bool
 
@@ -32,77 +41,80 @@ func TypeStringToReflectKind(str string) reflect.Kind {
 	return reflect.Invalid
 }
 
-func TypeStringToZeroInterface(str string) interface{} {
+func TypeStringToZeroInterface(str string) reflect.Type {
 	switch str {
 	case "bool":
-		return false
+		return reflect.TypeOf(false)
 	case "int":
-		return int(0)
+		return reflect.TypeOf(int(0))
 	case "int8":
-		return int8(0)
+		return reflect.TypeOf(int8(0))
 	case "int16":
-		return int16(0)
+		return reflect.TypeOf(int16(0))
 	case "int32":
-		return int32(0)
+		return reflect.TypeOf(int32(0))
 	case "int64":
-		return int64(0)
+		return reflect.TypeOf(int64(0))
 	case "uint":
-		return uint(0)
+		return reflect.TypeOf(uint(0))
 	case "uint8":
-		return uint8(0)
+		return reflect.TypeOf(uint8(0))
 	case "uint16":
-		return uint16(0)
+		return reflect.TypeOf(uint16(0))
 	case "uint32":
-		return uint32(0)
+		return reflect.TypeOf(uint32(0))
 	case "uint64":
-		return uint64(0)
+		return reflect.TypeOf(uint64(0))
 	case "float32":
-		return float32(0)
+		return reflect.TypeOf(float32(0))
 	case "float64":
-		return float64(0)
+		return reflect.TypeOf(float64(0))
 	case "complex64":
-		return complex64(0)
+		return reflect.TypeOf(complex64(0))
 	case "complex128":
-		return complex128(0)
+		return reflect.TypeOf(complex128(0))
 	case "string":
-		return ""
+		return reflect.TypeOf("")
 	case "time.Time":
-		return time.Time{}
+		return reflect.TypeOf(time.Time{})
 
 	case "[]bool":
-		return []bool{}
+		return reflect.TypeOf([]bool{})
 	case "[]int":
-		return []int{}
+		return reflect.TypeOf([]int{})
 	case "[]int8":
-		return []int8{}
+		return reflect.TypeOf([]int8{})
 	case "[]int16":
-		return []int16{}
+		return reflect.TypeOf([]int16{})
 	case "[]int32":
-		return []int32{}
+		return reflect.TypeOf([]int32{})
 	case "[]int64":
-		return []int64{}
+		return reflect.TypeOf([]int64{})
 	case "[]uint":
-		return []uint{}
+		return reflect.TypeOf([]uint{})
 	case "[]uint8":
-		return []uint8{}
+		return reflect.TypeOf([]uint8{})
 	case "[]uint16":
-		return []uint16{}
+		return reflect.TypeOf([]uint16{})
 	case "[]uint32":
-		return []uint32{}
+		return reflect.TypeOf([]uint32{})
 	case "[]uint64":
-		return []uint64{}
+		return reflect.TypeOf([]uint64{})
 	case "[]float32":
-		return []float32{}
+		return reflect.TypeOf([]float32{})
 	case "[]float64":
-		return []float64{}
+		return reflect.TypeOf([]float64{})
 	case "[]complex64":
-		return []complex64{}
+		return reflect.TypeOf([]complex64{})
 	case "[]complex128":
-		return []complex128{}
+		return reflect.TypeOf([]complex128{})
 	case "[]string":
-		return []string{}
+		return reflect.TypeOf([]string{})
 	case "[]time.Time":
-		return []time.Time{}
+		return reflect.TypeOf([]time.Time{})
+
+	case "interface{}":
+		return InterfaceType
 	}
 	return nil
 }
@@ -147,17 +159,20 @@ func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]reflect.St
 			}
 			isSlice = true
 		}
+		if _, ok := astType.(*ast.InterfaceType); ok {
+			typeStr = "interface{}"
+		}
 		if typeStr == "" {
 			err := ast.Print(c.fset, astType)
 			if err != nil {
 				log.Error("typeStr is empty, Print error", log.ErrorField(err), log.Any("astType", astType))
 			}
 		}
-		zeroI := TypeStringToZeroInterface(typeStr)
-		if zeroI == nil {
+		refType := TypeStringToZeroInterface(typeStr)
+		if refType == nil {
 			t, err := c.loadTypeFromSourceFileSet(typeStr)
 			if err != nil {
-				log.Error("loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr))
+				log.Error("loadTypeFromASTStructFields loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr))
 				return nil, err
 			}
 			if name == "" {
@@ -169,9 +184,8 @@ func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]reflect.St
 			} else if t.Kind() == reflect.Struct {
 				continue
 			}
-			zeroI = reflect.Zero(t.RefType()).Interface()
+			refType = t.RefType()
 		}
-		refType := reflect.TypeOf(zeroI)
 		if isSlice {
 			refType = reflect.SliceOf(refType)
 		}
@@ -195,16 +209,17 @@ func (c *ASTCoder) loadTypeFromASTStructType(st *ast.StructType) (gocoder.Type, 
 func (c *ASTCoder) loadTypeFromASTIdent(st *ast.Ident) (gocoder.Type, error) {
 	typeStr := st.Name
 	// log.Error("walker find", log.Reflect("info", st), log.Any("type", reflect.TypeOf(st)))
-	zeroI := TypeStringToZeroInterface(typeStr)
-	if zeroI == nil {
+	res := TypeStringToZeroInterface(typeStr)
+	if res == nil {
 		t, err := c.loadTypeFromSourceFileSet(typeStr)
 		if err != nil {
-			log.Error("loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj))
+			log.Error("loadTypeFromASTIdent loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj), log.Any("st", st))
+			ast.Print(c.fset, st)
 			return nil, err
 		}
-		zeroI = reflect.Zero(t.RefType()).Interface()
+		res = t.RefType()
 	}
-	return Type(zeroI), nil
+	return Type(res), nil
 }
 
 func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string) (gocoder.Type, error) {
