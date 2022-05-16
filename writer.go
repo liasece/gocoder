@@ -493,7 +493,7 @@ func (w *tWriter) NoteToCode(t Note) {
 func (w *tWriter) PtrCheckerToCode(t PtrChecker) {
 	ptrValues := make([]Value, 0, len(t.GetCheckerValue()))
 	for _, v := range t.GetCheckerValue() {
-		if v.IsPtr() || v.Type() == nil || v.Type().Kind() == reflect.Slice || v.Type().Kind() == reflect.Map {
+		if v.IsPtr() || v.Type() == nil || v.Type().Kind() == reflect.Slice || v.Type().Kind() == reflect.Map || v.Type().Kind() == reflect.Interface {
 			ptrValues = append(ptrValues, v)
 		}
 	}
