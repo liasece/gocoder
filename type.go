@@ -29,7 +29,9 @@ type Type interface {
 	Zero() Value
 	Name() string
 	GetNamed() string
+	GetRowStr() string
 	SetNamed(string)
+	SetPkg(string)
 	GetNext() Type
 
 	InterfaceForType() bool
@@ -60,22 +62,37 @@ func (t *tType) IsPtr() bool {
 	// if t == nil || t.Type == nil {
 	// 	return false
 	// }
+	if t.Type == nil && t.Str != "" {
+		return t.Str[0] == '*'
+	}
 	return t.Kind() == reflect.Ptr
+}
+
+var InterfaceType reflect.Type
+
+func init() {
+	type T struct {
+		A interface{}
+	}
+	InterfaceType = reflect.ValueOf(T{}).Field(0).Type()
 }
 
 func (t *tType) RefType() reflect.Type {
 	if t.Type != nil {
 		return t.Type
 	}
-	fields := make([]reflect.StructField, 0, len(t.Struct.GetFields()))
-	for _, v := range t.Struct.GetFields() {
-		fields = append(fields, reflect.StructField{
-			Name: v.GetName(),
-			Type: v.RefType(),
-			Tag:  reflect.StructTag(v.GetTag()),
-		})
+	if t.Struct != nil {
+		fields := make([]reflect.StructField, 0, len(t.Struct.GetFields()))
+		for _, v := range t.Struct.GetFields() {
+			fields = append(fields, reflect.StructField{
+				Name: v.GetName(),
+				Type: v.GetType().RefType(),
+				Tag:  reflect.StructTag(v.GetTag()),
+			})
+		}
+		return reflect.StructOf(fields)
 	}
-	return reflect.StructOf(fields)
+	return InterfaceType
 }
 
 func (t *tType) UnPtr() Type {
@@ -105,6 +122,7 @@ func (t *tType) TackPtr() Type {
 	if t.Kind() != reflect.Ptr {
 		return &tType{
 			Type:   reflect.PtrTo(t.Type),
+			Str:    t.Str,
 			Struct: t.Struct,
 		}
 	}
@@ -120,9 +138,14 @@ func (t *tType) Slice() Type {
 		}
 	}
 	if t.Kind() != reflect.Ptr {
+		str := t.Str
+		if str != "" {
+			str = "[]" + str
+		}
 		return &tType{
 			Type:   reflect.SliceOf(t.Type),
 			Struct: t.Struct,
+			Str:    str,
 		}
 	}
 	return t
@@ -151,6 +174,9 @@ func (t *tType) String() string {
 		}
 		res += str
 	}
+	if res == "" {
+		res = t.Named
+	}
 	return res
 }
 
@@ -169,10 +195,11 @@ func (t *tType) FieldByName(name string) (reflect.StructField, bool) {
 }
 
 func (t *tType) FieldTypeByName(name string) (Type, bool) {
+	// log.Error("test FieldByName", log.Any("name", name))
 	if t.Struct != nil {
 		f := t.Struct.FieldByName(name)
 		if f != nil {
-			return f, true
+			return f.GetType(), true
 		}
 	}
 	f, ok := t.Type.FieldByName(name)
@@ -219,12 +246,20 @@ func (t *tType) GetNamed() string {
 	return t.Named
 }
 
+func (t *tType) GetRowStr() string {
+	return t.Str
+}
+
 func (t *tType) GetNext() Type {
 	return t.Next
 }
 
 func (t *tType) SetNamed(v string) {
 	t.Named = v
+}
+
+func (t *tType) SetPkg(v string) {
+	t.Pkg = v
 }
 
 func (t *tType) Zero() Value {

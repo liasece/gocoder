@@ -123,8 +123,9 @@ func TypeStringToZeroInterface(str string) gocoder.Type {
 }
 
 type ASTCoder struct {
-	fset *token.FileSet
-	pkgs map[string]ast.Node
+	fset       *token.FileSet
+	pkgs       map[string]ast.Node
+	importPkgs map[string]string
 }
 
 func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]gocoder.Field, error) {
@@ -216,7 +217,16 @@ func (c *ASTCoder) loadTypeFromASTStructType(st *ast.StructType) (gocoder.Type, 
 	if err != nil {
 		return nil, err
 	}
-	return gocoder.NewStruct("", fields).GetType(), nil
+	res := gocoder.NewStruct("", fields).GetType()
+	for i := 0; i < res.NumField(); i++ {
+		f := res.Field(i)
+		t := f.GetType()
+		// log.Error("reload loadTypeFromASTStructType", log.Any("pkg", t.Package()), log.Any("resPkg", res.Package()), log.Any("map", c.importPkgs[t.Package()]), log.Any("res", t.String()))
+		if t.Package() != res.Package() && c.importPkgs[t.Package()] != "" {
+			t.SetPkg(c.importPkgs[t.Package()])
+		}
+	}
+	return res, nil
 }
 
 func (c *ASTCoder) loadTypeFromASTIdent(st *ast.Ident) (gocoder.Type, error) {
@@ -251,10 +261,22 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string) (gocoder.Type, err
 		// typePkgName = ss[0]
 		typeTypeName = ss[1]
 	}
-	for _, node := range c.pkgs {
+	for pkg, node := range c.pkgs {
 		ast.Walk((walker)(func(node ast.Node) bool {
 			if node == nil {
 				return true
+			}
+			{
+				// add import
+				if ts, ok := node.(*ast.ImportSpec); ok {
+					path := strings.ReplaceAll(ts.Path.Value, "\"", "")
+					ss := strings.Split(path, "/")
+					if len(ss) > 0 {
+						c.importPkgs[ss[len(ss)-1]] = path
+					}
+					// log.Error("add import", log.Any("key", ss[len(ss)-1]), log.Any("value", path))
+					// ast.Print(c.fset, ts)
+				}
 			}
 			// log.Error("walker", log.Any("node", node), log.Any("nodeType", reflect.TypeOf(node)))
 			ts, ok := node.(*ast.TypeSpec)
@@ -266,6 +288,7 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string) (gocoder.Type, err
 			}
 			if st, ok := ts.Type.(*ast.StructType); ok {
 				resType, resErr = c.loadTypeFromASTStructType(st)
+				resType.SetPkg(pkg)
 				return false
 			}
 			if st, ok := ts.Type.(*ast.Ident); ok {
@@ -281,7 +304,7 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string) (gocoder.Type, err
 	}
 	if resType == nil {
 		// 	return nil, errors.New("not found type: " + typeName + "(" + typeTypeName + ")")
-		log.Error("loadTypeFromSourceFileSet not found type", log.Any("typeName", typeName), log.Any("typeTypeName", typeTypeName))
+		log.Warn("loadTypeFromSourceFileSet not found type", log.Any("typeName", typeName), log.Any("typeTypeName", typeTypeName))
 	}
 	return resType, resErr
 }
@@ -359,8 +382,9 @@ func LoadTypeFromSource(path string, typeName string) (gocoder.Type, error) {
 		}
 	}
 	c := &ASTCoder{
-		fset: fset,
-		pkgs: ps,
+		fset:       fset,
+		pkgs:       ps,
+		importPkgs: make(map[string]string),
 	}
 	return c.loadTypeFromSourceFileSet(typeName)
 }

@@ -2,7 +2,6 @@ package gocoder
 
 type Field interface {
 	Codeable
-	Type
 	GetTag() string
 	GetName() string
 	GetType() Type
@@ -12,7 +11,7 @@ type Field interface {
 var _ Field = (*tField)(nil)
 
 type tField struct {
-	Type
+	Type   Type
 	ReName string
 	Tag    string
 }

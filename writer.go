@@ -227,13 +227,14 @@ func (w *tWriter) WriteCode(c Codeable) {
 		w.NoteToCode(t)
 	case Type:
 		str := typeStringOut(t, w.pkgTool)
-		if str == "" {
-			log.Panic("typeStringOut str == \"\"", log.Reflect("t", t))
-		}
+		// if str == "" {
+		// 	log.Panic("typeStringOut str == \"\"", log.Reflect("t", t))
+		// }
 		if t.GetNamed() != "" {
 			w.AddStr(t.GetNamed() + " ")
+		} else {
+			w.Add(str, t.GetNext())
 		}
-		w.Add(str, t.GetNext())
 	case Value:
 		w.ValueToCode(t)
 	case If:
@@ -514,6 +515,7 @@ func (w *tWriter) PtrCheckerToCode(t PtrChecker) {
 		code := NewIf(src, t.GetHandlers()...)
 		w.Add(code)
 	} else {
+		log.Error("PtrCheckerToCode but target type not ptr type", log.Any("tValues", t.GetCheckerValue()))
 		w.Add(NewCode().C(t.GetHandlers()...))
 	}
 }

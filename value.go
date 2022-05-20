@@ -398,6 +398,9 @@ func (t *tValue) Call(argsI ...interface{}) Value {
 }
 
 func (t *tValue) IsPtr() bool {
+	if t.IType != nil {
+		return t.IType.IsPtr()
+	}
 	if t.Type() == nil {
 		return false
 	}
