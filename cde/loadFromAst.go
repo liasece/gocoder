@@ -1,11 +1,12 @@
 package cde
 
 import (
-	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -41,80 +42,82 @@ func TypeStringToReflectKind(str string) reflect.Kind {
 	return reflect.Invalid
 }
 
-func TypeStringToZeroInterface(str string) reflect.Type {
+func TypeStringToZeroInterface(str string) gocoder.Type {
 	switch str {
 	case "bool":
-		return reflect.TypeOf(false)
+		return gocoder.MustToType(false)
+	case "byte":
+		return gocoder.MustToType(byte(0))
 	case "int":
-		return reflect.TypeOf(int(0))
+		return gocoder.MustToType(int(0))
 	case "int8":
-		return reflect.TypeOf(int8(0))
+		return gocoder.MustToType(int8(0))
 	case "int16":
-		return reflect.TypeOf(int16(0))
+		return gocoder.MustToType(int16(0))
 	case "int32":
-		return reflect.TypeOf(int32(0))
+		return gocoder.MustToType(int32(0))
 	case "int64":
-		return reflect.TypeOf(int64(0))
+		return gocoder.MustToType(int64(0))
 	case "uint":
-		return reflect.TypeOf(uint(0))
+		return gocoder.MustToType(uint(0))
 	case "uint8":
-		return reflect.TypeOf(uint8(0))
+		return gocoder.MustToType(uint8(0))
 	case "uint16":
-		return reflect.TypeOf(uint16(0))
+		return gocoder.MustToType(uint16(0))
 	case "uint32":
-		return reflect.TypeOf(uint32(0))
+		return gocoder.MustToType(uint32(0))
 	case "uint64":
-		return reflect.TypeOf(uint64(0))
+		return gocoder.MustToType(uint64(0))
 	case "float32":
-		return reflect.TypeOf(float32(0))
+		return gocoder.MustToType(float32(0))
 	case "float64":
-		return reflect.TypeOf(float64(0))
+		return gocoder.MustToType(float64(0))
 	case "complex64":
-		return reflect.TypeOf(complex64(0))
+		return gocoder.MustToType(complex64(0))
 	case "complex128":
-		return reflect.TypeOf(complex128(0))
+		return gocoder.MustToType(complex128(0))
 	case "string":
-		return reflect.TypeOf("")
+		return gocoder.MustToType("")
 	case "time.Time":
-		return reflect.TypeOf(time.Time{})
+		return gocoder.MustToType(time.Time{})
 
 	case "[]bool":
-		return reflect.TypeOf([]bool{})
+		return gocoder.MustToType([]bool{})
 	case "[]int":
-		return reflect.TypeOf([]int{})
+		return gocoder.MustToType([]int{})
 	case "[]int8":
-		return reflect.TypeOf([]int8{})
+		return gocoder.MustToType([]int8{})
 	case "[]int16":
-		return reflect.TypeOf([]int16{})
+		return gocoder.MustToType([]int16{})
 	case "[]int32":
-		return reflect.TypeOf([]int32{})
+		return gocoder.MustToType([]int32{})
 	case "[]int64":
-		return reflect.TypeOf([]int64{})
+		return gocoder.MustToType([]int64{})
 	case "[]uint":
-		return reflect.TypeOf([]uint{})
+		return gocoder.MustToType([]uint{})
 	case "[]uint8":
-		return reflect.TypeOf([]uint8{})
+		return gocoder.MustToType([]uint8{})
 	case "[]uint16":
-		return reflect.TypeOf([]uint16{})
+		return gocoder.MustToType([]uint16{})
 	case "[]uint32":
-		return reflect.TypeOf([]uint32{})
+		return gocoder.MustToType([]uint32{})
 	case "[]uint64":
-		return reflect.TypeOf([]uint64{})
+		return gocoder.MustToType([]uint64{})
 	case "[]float32":
-		return reflect.TypeOf([]float32{})
+		return gocoder.MustToType([]float32{})
 	case "[]float64":
-		return reflect.TypeOf([]float64{})
+		return gocoder.MustToType([]float64{})
 	case "[]complex64":
-		return reflect.TypeOf([]complex64{})
+		return gocoder.MustToType([]complex64{})
 	case "[]complex128":
-		return reflect.TypeOf([]complex128{})
+		return gocoder.MustToType([]complex128{})
 	case "[]string":
-		return reflect.TypeOf([]string{})
+		return gocoder.MustToType([]string{})
 	case "[]time.Time":
-		return reflect.TypeOf([]time.Time{})
+		return gocoder.MustToType([]time.Time{})
 
 	case "interface{}":
-		return InterfaceType
+		return gocoder.MustToType(InterfaceType)
 	}
 	return nil
 }
@@ -124,8 +127,8 @@ type ASTCoder struct {
 	pkgs map[string]ast.Node
 }
 
-func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]reflect.StructField, error) {
-	fields := make([]reflect.StructField, 0)
+func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]gocoder.Field, error) {
+	fields := make([]gocoder.Field, 0)
 	// log.Error("walker find", log.Any("info", st.Fields), log.Any("type", reflect.TypeOf(st.Fields)))
 	for _, arg := range st.Fields.List {
 		name := ""
@@ -168,32 +171,42 @@ func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]reflect.St
 				log.Error("typeStr is empty, Print error", log.ErrorField(err), log.Any("astType", astType))
 			}
 		}
-		refType := TypeStringToZeroInterface(typeStr)
-		if refType == nil {
+		typ := TypeStringToZeroInterface(typeStr)
+		if typ == nil {
 			t, err := c.loadTypeFromSourceFileSet(typeStr)
 			if err != nil {
 				log.Error("loadTypeFromASTStructFields loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr))
 				return nil, err
 			}
-			if name == "" {
-				// 匿名成员结构体
-				for i := 0; i < t.RefType().NumField(); i++ {
-					fields = append(fields, t.RefType().Field(i))
+			if t != nil {
+				if name == "" {
+					// 匿名成员结构体
+					for i := 0; i < t.NumField(); i++ {
+						fields = append(fields, t.Field(i))
+					}
+					continue
+				} else if t.Kind() == reflect.Struct {
+					// log.Info("skip type: Struct", log.Any("typeStr", typeStr))
+					// continue
+					t.SetNamed(typeStr)
 				}
-				continue
-			} else if t.Kind() == reflect.Struct {
-				continue
+				typ = t
 			}
-			refType = t.RefType()
 		}
-		if isSlice {
-			refType = reflect.SliceOf(refType)
+		if typ == nil {
+			log.Warn("not found type", log.Any("typeStr", typeStr), log.Any("st", st))
+		} else if !('a' <= name[0] && name[0] <= 'z' || name[0] == '_') {
+			if isSlice {
+				typ = typ.Slice()
+			}
+			var tag string
+			if arg.Tag != nil {
+				tag = strings.ReplaceAll(arg.Tag.Value, "`", "")
+			}
+			fields = append(fields, gocoder.NewField(name, typ, tag))
+		} else {
+			log.Info("skip type", log.Any("typeStr", typeStr), log.Any("st", st))
 		}
-		fields = append(fields, reflect.StructField{
-			Name: name,
-			Type: refType,
-			Tag:  reflect.StructTag(strings.ReplaceAll(arg.Tag.Value, "`", "")),
-		})
 	}
 	return fields, nil
 }
@@ -203,7 +216,7 @@ func (c *ASTCoder) loadTypeFromASTStructType(st *ast.StructType) (gocoder.Type, 
 	if err != nil {
 		return nil, err
 	}
-	return Type(reflect.StructOf(fields)), nil
+	return gocoder.NewStruct("", fields).GetType(), nil
 }
 
 func (c *ASTCoder) loadTypeFromASTIdent(st *ast.Ident) (gocoder.Type, error) {
@@ -213,18 +226,31 @@ func (c *ASTCoder) loadTypeFromASTIdent(st *ast.Ident) (gocoder.Type, error) {
 	if res == nil {
 		t, err := c.loadTypeFromSourceFileSet(typeStr)
 		if err != nil {
-			log.Error("loadTypeFromASTIdent loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj), log.Any("st", st))
+			log.Warn("loadTypeFromASTIdent loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj), log.Any("st", st))
 			ast.Print(c.fset, st)
-			return nil, err
+			return nil, nil
 		}
-		res = t.RefType()
+		if t == nil {
+			log.Warn("not found type", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj), log.Any("st", st))
+		} else {
+			res = t
+		}
 	}
-	return Type(res), nil
+	if res == nil {
+		return nil, nil
+	}
+	return res, nil
 }
 
 func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string) (gocoder.Type, error) {
 	var resType gocoder.Type
 	var resErr error
+	typeTypeName := typeName
+	// typePkgName := ""
+	if ss := strings.Split(typeName, "."); len(ss) == 2 {
+		// typePkgName = ss[0]
+		typeTypeName = ss[1]
+	}
 	for _, node := range c.pkgs {
 		ast.Walk((walker)(func(node ast.Node) bool {
 			if node == nil {
@@ -235,7 +261,7 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string) (gocoder.Type, err
 			if !ok {
 				return true
 			}
-			if ts.Name.Name != typeName {
+			if ts.Name.Name != typeTypeName {
 				return true
 			}
 			if st, ok := ts.Type.(*ast.StructType); ok {
@@ -254,36 +280,87 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string) (gocoder.Type, err
 		}
 	}
 	if resType == nil {
-		return nil, errors.New("not found type: " + typeName)
+		// 	return nil, errors.New("not found type: " + typeName + "(" + typeTypeName + ")")
+		log.Error("loadTypeFromSourceFileSet not found type", log.Any("typeName", typeName), log.Any("typeTypeName", typeTypeName))
 	}
 	return resType, resErr
 }
 
-func LoadTypeFromSource(path string, typeName string) (gocoder.Type, error) {
-	fset := token.NewFileSet()
-	if fileInfo, err := os.Stat(path); err == nil && fileInfo.IsDir() {
-		// from path
-		pkgs, err := parser.ParseDir(fset, path, nil, parser.AllErrors)
-		if err != nil {
-			return nil, err
-		}
-		ps := make(map[string]ast.Node)
-		for k, v := range pkgs {
-			ps[k] = v
-		}
-		c := &ASTCoder{
-			fset: fset,
-			pkgs: ps,
-		}
-		return c.loadTypeFromSourceFileSet(typeName)
-	}
-	node, err := parser.ParseFile(fset, path, nil, parser.AllErrors)
+func ParseDir(fset *token.FileSet, path string, filter func(fs.FileInfo) bool, mode parser.Mode) (pkgs map[string]*ast.Package, first error) {
+	list, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
+
+	pkgs = make(map[string]*ast.Package)
+	for _, d := range list {
+		if d.IsDir() {
+			ps, err := ParseDir(fset, filepath.Join(path, d.Name()), filter, mode)
+			if err != nil {
+				return nil, err
+			}
+			for k, v := range ps {
+				pkgs[k] = v
+			}
+			continue
+		}
+		if !strings.HasSuffix(d.Name(), ".go") {
+			continue
+		}
+		if filter != nil {
+			info, err := d.Info()
+			if err != nil {
+				return nil, err
+			}
+			if !filter(info) {
+				continue
+			}
+		}
+		filename := filepath.Join(path, d.Name())
+		if src, err := parser.ParseFile(fset, filename, nil, mode); err == nil {
+			name := src.Name.Name
+			pkg, found := pkgs[name]
+			if !found {
+				pkg = &ast.Package{
+					Name:  name,
+					Files: make(map[string]*ast.File),
+				}
+				pkgs[name] = pkg
+			}
+			pkg.Files[filename] = src
+		} else if first == nil {
+			first = err
+		}
+	}
+
+	return
+}
+
+func LoadTypeFromSource(path string, typeName string) (gocoder.Type, error) {
+	fset := token.NewFileSet()
+	ps := make(map[string]ast.Node)
+	pathSS := strings.Split(path, ",")
+	for _, path := range pathSS {
+		if fileInfo, err := os.Stat(path); err == nil && fileInfo.IsDir() {
+			// from path
+			pkgs, err := ParseDir(fset, path, nil, parser.AllErrors)
+			if err != nil {
+				return nil, err
+			}
+			for k, v := range pkgs {
+				ps[k] = v
+			}
+		} else {
+			node, err := parser.ParseFile(fset, path, nil, parser.AllErrors)
+			if err != nil {
+				return nil, err
+			}
+			ps[node.Name.Name] = node
+		}
+	}
 	c := &ASTCoder{
 		fset: fset,
-		pkgs: map[string]ast.Node{node.Name.Name: node},
+		pkgs: ps,
 	}
 	return c.loadTypeFromSourceFileSet(typeName)
 }

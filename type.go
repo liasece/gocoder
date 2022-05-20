@@ -21,6 +21,8 @@ type Type interface {
 	Package() string
 	ConvertibleTo(i interface{}) bool
 	Implements(i interface{}) bool
+	NumField() int
+	Field(i int) Field
 	FieldByName(name string) (reflect.StructField, bool)
 	FieldTypeByName(name string) (Type, bool)
 	MethodByName(name string) (reflect.Method, bool)
@@ -62,7 +64,18 @@ func (t *tType) IsPtr() bool {
 }
 
 func (t *tType) RefType() reflect.Type {
-	return t.Type
+	if t.Type != nil {
+		return t.Type
+	}
+	fields := make([]reflect.StructField, 0, len(t.Struct.GetFields()))
+	for _, v := range t.Struct.GetFields() {
+		fields = append(fields, reflect.StructField{
+			Name: v.GetName(),
+			Type: v.RefType(),
+			Tag:  reflect.StructTag(v.GetTag()),
+		})
+	}
+	return reflect.StructOf(fields)
 }
 
 func (t *tType) UnPtr() Type {
@@ -169,12 +182,37 @@ func (t *tType) FieldTypeByName(name string) (Type, bool) {
 	return NewType(f.Type), true
 }
 
+func (t *tType) NumField() int {
+	if t.Struct != nil {
+		return len(t.Struct.GetFields())
+	}
+	return t.Type.NumField()
+}
+
+func (t *tType) Field(i int) Field {
+	if t.Struct != nil {
+		return t.Struct.GetFields()[i]
+	}
+	f := t.Type.Field(i)
+	return NewField(f.Name, NewTypeI(f.Type), string(f.Tag))
+}
+
+func (t *tType) Kind() reflect.Kind {
+	if t.Type != nil {
+		return t.Type.Kind()
+	}
+	return t.RefType().Kind()
+}
+
 func (t *tType) MethodByName(name string) (reflect.Method, bool) {
 	return t.Type.MethodByName(name)
 }
 
 func (t *tType) Name() string {
-	return t.Type.Name()
+	if t.Type != nil {
+		return t.Type.Name()
+	}
+	return t.GetNamed()
 }
 
 func (t *tType) GetNamed() string {
