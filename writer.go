@@ -128,14 +128,15 @@ func Write(w io.Writer, c Codeable, opts ...*ToCodeOption) error {
 	if opt.pkgName != nil {
 		pkgName = *opt.pkgName
 	}
-	_, err := fmt.Fprintln(w, "package", pkgName)
-	if err != nil {
-		return err
-	}
-
-	_, err = fmt.Fprintln(w)
-	if err != nil {
-		return err
+	if pkgName != "" {
+		_, err := fmt.Fprintln(w, "package", pkgName)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(w)
+		if err != nil {
+			return err
+		}
 	}
 
 	codeStr := ToCode(c, opt)
