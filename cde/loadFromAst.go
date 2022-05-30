@@ -128,6 +128,13 @@ type ASTCoder struct {
 	importPkgs map[string]string
 }
 
+func toTypeStr(pkg string, name string) string {
+	if pkg == "" {
+		return name
+	}
+	return pkg + "." + name
+}
+
 func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]gocoder.Field, error) {
 	fields := make([]gocoder.Field, 0)
 	// log.Error("walker find", log.Any("info", st.Fields), log.Any("type", reflect.TypeOf(st.Fields)))
@@ -148,8 +155,11 @@ func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]gocoder.Fi
 			}
 		}
 
+		pkg := ""
 		if se, ok := astType.(*ast.SelectorExpr); ok {
-			typeStr = se.X.(*ast.Ident).Name + "." + se.Sel.Name
+			// typeStr = se.X.(*ast.Ident).Name + "." + se.Sel.Name
+			typeStr = se.Sel.Name
+			pkg = se.X.(*ast.Ident).Name
 			// log.Error("walker find", log.Reflect("info", arg.Tag.Value), log.Any("type", reflect.TypeOf(arg.Type)), log.Any("namesLen", len(arg.Names)), log.Reflect("se", se), log.Any("seType", reflect.TypeOf(se.Sel)))
 		}
 		if se, ok := astType.(*ast.Ident); ok {
@@ -172,11 +182,11 @@ func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]gocoder.Fi
 				log.Error("typeStr is empty, Print error", log.ErrorField(err), log.Any("astType", astType))
 			}
 		}
-		typ := TypeStringToZeroInterface(typeStr)
+		typ := TypeStringToZeroInterface(toTypeStr(pkg, typeStr))
 		if typ == nil {
-			t, err := c.loadTypeFromSourceFileSet(typeStr)
+			t, err := c.loadTypeFromSourceFileSet(toTypeStr(pkg, typeStr))
 			if err != nil {
-				log.Error("loadTypeFromASTStructFields loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr))
+				log.Error("loadTypeFromASTStructFields loadTypeFromSourceFileSet error", log.ErrorField(err), log.Any("pkg", pkg), log.Any("typeStr", typeStr))
 				return nil, err
 			}
 			if t != nil {
@@ -190,6 +200,8 @@ func (c *ASTCoder) loadTypeFromASTStructFields(st *ast.StructType) ([]gocoder.Fi
 					// log.Info("skip type: Struct", log.Any("typeStr", typeStr))
 					// continue
 					t.SetNamed(typeStr)
+					t.SetPkg(pkg)
+					// log.Debug("in SetNamed", log.Any("name", t.Name()), log.Any("str", t.String()), log.Any("pkg", t.Package()))
 				}
 				typ = t
 			}
@@ -224,6 +236,9 @@ func (c *ASTCoder) loadTypeFromASTStructType(st *ast.StructType) (gocoder.Type, 
 		// log.Error("reload loadTypeFromASTStructType", log.Any("pkg", t.Package()), log.Any("resPkg", res.Package()), log.Any("map", c.importPkgs[t.Package()]), log.Any("res", t.String()))
 		if t.Package() != res.Package() && c.importPkgs[t.Package()] != "" {
 			t.SetPkg(c.importPkgs[t.Package()])
+			// log.Debug("set pkg", log.Any("str", t.String()))
+		} else {
+			// log.Debug("not set pkg", log.Any("str", t.String()))
 		}
 	}
 	return res, nil

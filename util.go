@@ -29,7 +29,7 @@ func typeStrIter(refType reflect.Type, path string, tool PkgTool) string {
 }
 
 func typeStringOut(t Type, tool PkgTool) string {
-	str := t.String()
+	str := t.CurrentCode()
 	if tool != nil {
 		if pkg := t.Package(); pkg != "" {
 			if str == "" {
@@ -39,6 +39,10 @@ func typeStringOut(t Type, tool PkgTool) string {
 			if strings.HasPrefix(str, "[]") {
 				str = str[2:]
 				prefix = "[]"
+			}
+			if strings.HasPrefix(str, "*") {
+				str = str[1:]
+				prefix = "*"
 			}
 			return prefix + tool.PkgAlias(pkg) + "." + str
 		}

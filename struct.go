@@ -3,6 +3,7 @@ package gocoder
 type Struct interface {
 	Codeable
 	GetFields() []Field
+	AddFields([]Field)
 	FieldByName(name string) Field
 	GetName() string
 	GetType() Type
@@ -26,6 +27,10 @@ func (t *tStruct) GetName() string {
 
 func (t *tStruct) GetFields() []Field {
 	return t.Fields
+}
+
+func (t *tStruct) AddFields(fs []Field) {
+	t.Fields = append(t.Fields, fs...)
 }
 
 func (t *tStruct) FieldByName(name string) Field {

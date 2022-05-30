@@ -18,6 +18,7 @@ type Type interface {
 	Elem() Type
 	Kind() reflect.Kind
 	String() string
+	CurrentCode() string
 	Package() string
 	ConvertibleTo(i interface{}) bool
 	Implements(i interface{}) bool
@@ -103,6 +104,7 @@ func (t *tType) UnPtr() Type {
 		return &tType{
 			Type:   t.Type.Elem(),
 			Struct: t.Struct,
+			Pkg:    t.Pkg,
 		}
 	}
 	return t
@@ -115,6 +117,7 @@ func (t *tType) TackPtr() Type {
 				Str:    "*",
 				Struct: t.Struct,
 				Next:   t,
+				Pkg:    t.Pkg,
 			}
 		}
 		return t
@@ -124,6 +127,7 @@ func (t *tType) TackPtr() Type {
 			Type:   reflect.PtrTo(t.Type),
 			Str:    t.Str,
 			Struct: t.Struct,
+			Pkg:    t.Pkg,
 		}
 	}
 	return t
@@ -162,10 +166,43 @@ func (t *tType) Package() string {
 	return t.Pkg
 }
 
+func (t *tType) CurrentCode() string {
+	if t.Str != "" {
+		return t.Str
+	}
+	if t.Type != nil {
+		if t.Type.Name() != "" {
+			return t.Type.String()
+		}
+		switch t.Type.Kind() {
+		case reflect.Array:
+			return "[]"
+		case reflect.Chan:
+			return "chan"
+		case reflect.Map:
+			return "map[" + t.Type.Key().Name() + "]"
+		case reflect.Pointer:
+			return "*"
+		case reflect.Slice:
+			return "[]"
+		default:
+			str := t.Type.String()
+			if str == "[]uint8" {
+				str = "[]byte"
+			}
+			return str
+		}
+	}
+	return t.Named
+}
+
 func (t *tType) String() string {
 	res := ""
 	if t.Str != "" {
 		res = t.Str
+		if t.Next != nil {
+			res = res + t.Next.String()
+		}
 	}
 	if t.Type != nil {
 		str := t.Type.String()
@@ -251,7 +288,21 @@ func (t *tType) GetRowStr() string {
 }
 
 func (t *tType) GetNext() Type {
-	return t.Next
+	if t.Next != nil {
+		return t.Next
+	}
+	if t.Type != nil && t.Type.Name() == "" && (t.Type.Kind() == reflect.Array ||
+		t.Type.Kind() == reflect.Chan ||
+		t.Type.Kind() == reflect.Map ||
+		t.Type.Kind() == reflect.Pointer ||
+		t.Type.Kind() == reflect.Slice) {
+		return &tType{
+			Type:   t.Type.Elem(),
+			Struct: t.Struct,
+			Pkg:    t.Pkg,
+		}
+	}
+	return nil
 }
 
 func (t *tType) SetNamed(v string) {
@@ -259,6 +310,7 @@ func (t *tType) SetNamed(v string) {
 }
 
 func (t *tType) SetPkg(v string) {
+	// log.Debug("SetPkg", log.Any("v", v), log.Any("t.string", t.String()))
 	t.Pkg = v
 }
 
