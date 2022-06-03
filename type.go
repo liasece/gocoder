@@ -156,6 +156,12 @@ func (t *tType) Slice() Type {
 }
 
 func (t *tType) Elem() Type {
+	if t.Str == "[]" || t.Str == "*" {
+		tmp := *t
+		res := &tmp
+		res.Str = ""
+		return res
+	}
 	tmp := *t
 	res := &tmp
 	res.Type = t.Type.Elem()
@@ -262,6 +268,9 @@ func (t *tType) Field(i int) Field {
 }
 
 func (t *tType) Kind() reflect.Kind {
+	if t.Str == "[]" {
+		return reflect.Slice
+	}
 	if t.Type != nil {
 		return t.Type.Kind()
 	}
