@@ -247,7 +247,7 @@ func (c *ASTCoder) loadTypeFromASTStructType(name string, st *ast.StructType, op
 		// log.Error("reload loadTypeFromASTStructType", log.Any("pkg", t.Package()), log.Any("resPkg", res.Package()), log.Any("map", c.importPkgs[t.Package()]), log.Any("res", t.String()))
 		if t.Package() != res.Package() && c.importPkgs[t.Package()] != "" {
 			t.SetPkg(c.importPkgs[t.Package()])
-			log.Warn("set pkg", log.Any("str", t.String()))
+			// log.Warn("set pkg", log.Any("str", t.String()))
 			// } else {
 			// log.Debug("not set pkg", log.Any("str", t.String()))
 		}
@@ -277,6 +277,11 @@ func (c *ASTCoder) loadTypeFromASTIdent(st *ast.Ident, opt *gocoder.ToCodeOption
 		return nil, nil
 	}
 	return res, nil
+}
+
+func pkgInReference(str string) string {
+	ss := strings.Split(str, "/")
+	return ss[len(ss)-1]
 }
 
 func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
@@ -314,7 +319,7 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string, opt *gocoder.ToCod
 				// found target type
 				if st, ok := ts.Type.(*ast.StructType); ok {
 					resType, resErr = c.loadTypeFromASTStructType(ts.Name.Name, st, opt)
-					if pkgPath := opt.GetPkgPath(); pkgPath != nil {
+					if pkgPath := opt.GetPkgPath(); pkgPath != nil && pkgInReference(*pkgPath) == pkg {
 						resType.SetPkg(*pkgPath)
 						// log.Warn("loadTypeFromSourceFileSet loadTypeFromASTStructType set pkg from opt", log.Reflect("ts.Name.Name", ts.Name.Name), log.Any("pkgPath", pkgPath), log.Any("nowPkg", pkg))
 					} else {

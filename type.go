@@ -22,6 +22,7 @@ type Type interface {
 	ShowString() string
 	CurrentCode() string
 	Package() string
+	PackageInReference() string
 	ConvertibleTo(i interface{}) bool
 	Implements(i interface{}) bool
 	NumField() int
@@ -208,6 +209,11 @@ func (t *tType) Elem() Type {
 
 func (t *tType) Package() string {
 	return t.Pkg
+}
+
+func (t *tType) PackageInReference() string {
+	ss := strings.Split(t.Package(), "/")
+	return ss[len(ss)-1]
 }
 
 func (t *tType) CurrentCode() string {

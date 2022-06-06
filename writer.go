@@ -58,6 +58,7 @@ type tWriter struct {
 	needIndent bool
 	inline     bool
 	pkgTool    PkgTool
+	toPkg      string
 }
 
 // ToCode func
@@ -67,15 +68,23 @@ func ToCode(c Codeable, opts ...*ToCodeOption) string {
 	if pkgTool == nil {
 		pkgTool = NewDefaultPkgTool()
 	}
+	toPkg := ""
+	if opt.pkgName != nil {
+		toPkg = *opt.pkgName
+	}
+	if opt.pkgPath != nil {
+		toPkg = *opt.pkgPath
+	}
 	w := &tWriter{
 		out:     &bytes.Buffer{},
 		pkgTool: pkgTool,
+		toPkg:   toPkg,
 	}
 	c.WriteCode(w)
 	return w.out.String()
 }
 
-func GetImports(pkgTool PkgTool) ([]string, error) {
+func GetImports(pkgTool PkgTool, skip []string) ([]string, error) {
 	m := pkgTool.PkgAliasMap()
 	res := make([]string, 0)
 	if len(m) > 0 {
@@ -83,6 +92,16 @@ func GetImports(pkgTool PkgTool) ([]string, error) {
 		aliases := make([]string, 0, len(m))
 
 		for path, alias := range m {
+			isSkip := false
+			for _, s := range skip {
+				if alias == s || path == s {
+					isSkip = true
+					break
+				}
+			}
+			if isSkip {
+				continue
+			}
 			aliases = append(aliases, alias)
 			byAlias[alias] = path
 		}
@@ -99,8 +118,8 @@ func GetImports(pkgTool PkgTool) ([]string, error) {
 	return res, nil
 }
 
-func GetImportStr(pkgTool PkgTool) (string, error) {
-	imports, err := GetImports(pkgTool)
+func GetImportStr(pkgTool PkgTool, skip []string) (string, error) {
+	imports, err := GetImports(pkgTool, skip)
 	if err != nil {
 		return "", err
 	}
@@ -141,7 +160,7 @@ func Write(w io.Writer, c Codeable, opts ...*ToCodeOption) error {
 
 	codeStr := ToCode(c, opt)
 
-	importStr, err := GetImportStr(opt.pkgTool)
+	importStr, err := GetImportStr(opt.pkgTool, []string{pkgName})
 	if err != nil {
 		return err
 	}
@@ -164,6 +183,9 @@ func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
 	opt := MergeToCodeOpt(opts...)
 	if opt.pkgTool == nil {
 		opt.pkgTool = NewDefaultPkgTool()
+		if opt.pkgName != nil {
+			opt.pkgTool.SetPkgAlias(*opt.pkgName, "")
+		}
 	}
 	err := os.MkdirAll(filepath.Dir(filename), 0755)
 	if err != nil {
@@ -227,7 +249,7 @@ func (w *tWriter) WriteCode(c Codeable) {
 	case Note:
 		w.NoteToCode(t)
 	case Type:
-		str := typeStringOut(t, w.pkgTool)
+		str := typeStringOut(t, w.pkgTool, w.toPkg)
 		// if str == "" {
 		// 	log.Panic("typeStringOut str == \"\"", log.Reflect("t", t))
 		// }
@@ -276,7 +298,7 @@ func isValidPkgName(str string) bool {
 // Line func
 func (w *tWriter) ValueToCode(t Value) {
 	if t.GetIType() != nil {
-		typeStringOut(t.GetIType(), w.pkgTool)
+		typeStringOut(t.GetIType(), w.pkgTool, w.toPkg)
 	}
 	switch t.GetAction() {
 	case ValueActionNone:

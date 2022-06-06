@@ -7,7 +7,7 @@ import (
 )
 
 func useOfCastType(t Type, tool PkgTool) string {
-	return typeStringOut(t, tool)
+	return typeStringOut(t, tool, "")
 }
 
 func typeStrIter(refType reflect.Type, path string, tool PkgTool) string {
@@ -28,10 +28,10 @@ func typeStrIter(refType reflect.Type, path string, tool PkgTool) string {
 	return refType.String()
 }
 
-func typeStringOut(t Type, tool PkgTool) string {
+func typeStringOut(t Type, tool PkgTool, toPkg string) string {
 	str := t.CurrentCode()
 	if tool != nil {
-		if pkg := t.Package(); pkg != "" {
+		if pkg := t.Package(); pkg != "" && pkg != toPkg {
 			if str == "" {
 				return ""
 			}
