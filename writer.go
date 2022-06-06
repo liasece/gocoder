@@ -231,7 +231,7 @@ func (w *tWriter) WriteCode(c Codeable) {
 		// if str == "" {
 		// 	log.Panic("typeStringOut str == \"\"", log.Reflect("t", t))
 		// }
-		if t.GetNamed() != "" {
+		if str == "" && t.GetNamed() != "" {
 			w.AddStr(t.GetNamed() + " ")
 		} else {
 			w.Add(str, t.GetNext())

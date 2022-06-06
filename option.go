@@ -61,6 +61,10 @@ func (o *ToCodeOption) PkgPath(v string) *ToCodeOption {
 	return o
 }
 
+func (o *ToCodeOption) GetPkgPath() *string {
+	return o.pkgPath
+}
+
 // PkgTool func
 func (o *ToCodeOption) NoPretty(v bool) *ToCodeOption {
 	o.noPretty = &v

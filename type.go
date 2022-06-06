@@ -10,6 +10,7 @@ type Type interface {
 	Codeable
 	RefType() reflect.Type
 	IsPtr() bool
+	IsSlice() bool
 	UnPtr() Type
 	IsStruct() bool
 	TackPtr() Type
@@ -18,6 +19,7 @@ type Type interface {
 	Elem() Type
 	Kind() reflect.Kind
 	String() string
+	ShowString() string
 	CurrentCode() string
 	Package() string
 	ConvertibleTo(i interface{}) bool
@@ -35,6 +37,9 @@ type Type interface {
 	SetPkg(string)
 	GetNext() Type
 
+	AllSub() []Type // list all type chian nodes, top type in last index
+	HasPtrSubType() bool
+	HasSliceSubType() bool
 	InterfaceForType() bool
 }
 
@@ -67,6 +72,38 @@ func (t *tType) IsPtr() bool {
 		return t.Str[0] == '*'
 	}
 	return t.Kind() == reflect.Ptr
+}
+
+func (t *tType) IsSlice() bool {
+	return t.Kind() == reflect.Slice
+}
+
+// list all type chian nodes, top type in last index
+func (t *tType) AllSub() []Type {
+	if t.Next != nil {
+		return append(t.Next.AllSub(), t)
+	}
+	return []Type{t}
+}
+
+func (t *tType) HasPtrSubType() bool {
+	ls := t.AllSub()
+	for _, v := range ls {
+		if v.IsPtr() {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *tType) HasSliceSubType() bool {
+	ls := t.AllSub()
+	for _, v := range ls {
+		if v.IsSlice() {
+			return true
+		}
+	}
+	return false
 }
 
 var InterfaceType reflect.Type
@@ -117,7 +154,7 @@ func (t *tType) TackPtr() Type {
 				Str:    "*",
 				Struct: t.Struct,
 				Next:   t,
-				Pkg:    t.Pkg,
+				// Pkg:    t.Pkg,
 			}
 		}
 		return t
@@ -139,6 +176,7 @@ func (t *tType) Slice() Type {
 			Str:    "[]",
 			Struct: t.Struct,
 			Next:   t,
+			// Pkg:    t.Pkg,
 		}
 	}
 	if t.Kind() != reflect.Ptr {
@@ -223,6 +261,33 @@ func (t *tType) String() string {
 	return res
 }
 
+func (t *tType) ShowString() string {
+	head := ""
+	if t.Package() != "" {
+		head = t.Package() + "."
+	}
+	if t.Str != "" {
+		res := head + t.Str
+		if t.Next != nil {
+			res = res + t.Next.ShowString()
+		}
+		return res
+	}
+	if t.Type != nil {
+		str := t.Type.String()
+		if str == "[]uint8" {
+			str = "[]byte"
+		}
+		return str
+	}
+
+	res := head + t.Named
+	if t.Next != nil {
+		res = res + t.Next.ShowString()
+	}
+	return res
+}
+
 func (t *tType) ConvertibleTo(i interface{}) bool {
 	u := MustToType(i)
 	return t.Type.ConvertibleTo(u.RefType())
@@ -268,11 +333,17 @@ func (t *tType) Field(i int) Field {
 }
 
 func (t *tType) Kind() reflect.Kind {
-	if t.Str == "[]" {
+	if strings.HasPrefix(t.Str, "[]") {
 		return reflect.Slice
+	}
+	if strings.HasPrefix(t.Str, "*") {
+		return reflect.Ptr
 	}
 	if t.Type != nil {
 		return t.Type.Kind()
+	}
+	if t.Struct != nil {
+		return reflect.Struct
 	}
 	return t.RefType().Kind()
 }
