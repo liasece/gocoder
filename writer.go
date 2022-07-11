@@ -118,13 +118,49 @@ func GetImports(pkgTool PkgTool, skip []string) ([]string, error) {
 	return res, nil
 }
 
+type ImportPkgStrSort []string
+
+func (a ImportPkgStrSort) Len() int      { return len(a) }
+func (a ImportPkgStrSort) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ImportPkgStrSort) Less(i, j int) bool {
+	if strings.Count(a[i], ".") != 0 && strings.Count(a[j], ".") == 0 {
+		return true
+	}
+	return strings.Count(a[i], "/") < strings.Count(a[j], "/")
+}
+
+func isInnerPkg(s string) bool {
+	if strings.Count(s, ".") != 0 {
+		return false
+	}
+	if strings.Count(s, "/") >= 3 {
+		return false
+	}
+	return true
+}
+
+func isExternalPkg(s string) bool {
+	if strings.Count(s, ".") != 0 {
+		return true
+	}
+	return false
+}
+
 func GetImportStr(pkgTool PkgTool, skip []string) (string, error) {
 	imports, err := GetImports(pkgTool, skip)
 	if err != nil {
 		return "", err
 	}
+	sort.Sort(ImportPkgStrSort(imports))
 	if len(imports) > 0 {
-		return fmt.Sprintf("import (\n\t%s\n)", strings.Join(imports, "\n\t")), nil
+		strs := ""
+		for i, v := range imports {
+			strs += v + "\n"
+			if i < len(imports)-1 && ((isInnerPkg(imports[i]) && !isInnerPkg(imports[i+1])) || (isExternalPkg(imports[i]) && !isExternalPkg(imports[i+1]))) {
+				strs += "\n"
+			}
+		}
+		return fmt.Sprintf("import (\n%s\n)", strs), nil
 	}
 	return "", nil
 }
@@ -195,6 +231,7 @@ func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
 	if err != nil {
 		return err
 	}
+	// log.L(nil).Error("test", log.Any("filename", filename), log.Any("str", str))
 	bytes := []byte(str)
 	if opt.noPretty == nil || *opt.noPretty == false {
 		bytes, err = imports.Process(filename, bytes, &imports.Options{FormatOnly: true, Comments: true, TabIndent: true, TabWidth: 8})
