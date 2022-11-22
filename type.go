@@ -262,7 +262,11 @@ func (t *tType) String() string {
 		res += str
 	}
 	if res == "" {
-		res = t.Named
+		if t.Next != nil {
+			res = t.Next.String()
+		} else {
+			res = t.Named
+		}
 	}
 	return res
 }

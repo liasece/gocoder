@@ -122,9 +122,14 @@ func TypeStringToZeroInterface(str string) gocoder.Type {
 	return nil
 }
 
+type ASTPkg struct {
+	name string
+	node ast.Node
+}
+
 type ASTCoder struct {
 	fset       *token.FileSet
-	pkgs       map[string]ast.Node
+	pkgs       []*ASTPkg
 	importPkgs map[string]string
 }
 
@@ -293,7 +298,8 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string, opt *gocoder.ToCod
 		// typePkgName = ss[0]
 		typeTypeName = ss[1]
 	}
-	for pkg, node := range c.pkgs {
+	for _, pkgV := range c.pkgs {
+		pkg, node := pkgV.name, pkgV.node
 		ast.Walk((walker)(func(node ast.Node) bool {
 			if node == nil {
 				return true
@@ -331,7 +337,7 @@ func (c *ASTCoder) loadTypeFromSourceFileSet(typeName string, opt *gocoder.ToCod
 					resType, resErr = c.loadTypeFromASTIdent(st, opt)
 					return false
 				}
-				log.Error("ts.Name.Name == typeName but type unknown", log.Any("type", reflect.TypeOf(ts.Type)))
+				log.Error("ts.Name.Name == typeName but type unknown", log.Any("loadTypeName", typeName), log.Any("typeTypeName", typeTypeName), log.Any("type", reflect.TypeOf(ts.Type)))
 			}
 			return true
 		}), node)
@@ -396,34 +402,52 @@ func ParseDir(fset *token.FileSet, path string, filter func(fs.FileInfo) bool, m
 	return
 }
 
-func LoadTypeFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) (gocoder.Type, error) {
+func (c *ASTCoder) GetType(typeName string, opts ...*gocoder.ToCodeOption) (gocoder.Type, error) {
 	opt := gocoder.MergeToCodeOpt(opts...)
+	return c.loadTypeFromSourceFileSet(typeName, opt)
+}
 
+func NewASTCoder(paths ...string) (*ASTCoder, error) {
 	fset := token.NewFileSet()
-	ps := make(map[string]ast.Node)
-	pathSS := strings.Split(path, ",")
-	for _, path := range pathSS {
-		if fileInfo, err := os.Stat(path); err == nil && fileInfo.IsDir() {
-			// from path
-			pkgs, err := ParseDir(fset, path, nil, parser.AllErrors)
-			if err != nil {
-				return nil, err
+	ps := make([]*ASTPkg, 0)
+	for _, path := range paths {
+		pathSS := strings.Split(path, ",")
+		for _, path := range pathSS {
+			if fileInfo, err := os.Stat(path); err == nil && fileInfo.IsDir() {
+				// from path
+				pkgs, err := ParseDir(fset, path, nil, parser.AllErrors)
+				if err != nil {
+					return nil, err
+				}
+				for k, v := range pkgs {
+					ps = append(ps, &ASTPkg{
+						name: k,
+						node: v,
+					})
+				}
+			} else {
+				node, err := parser.ParseFile(fset, path, nil, parser.AllErrors)
+				if err != nil {
+					return nil, err
+				}
+				ps = append(ps, &ASTPkg{
+					name: node.Name.Name,
+					node: node,
+				})
 			}
-			for k, v := range pkgs {
-				ps[k] = v
-			}
-		} else {
-			node, err := parser.ParseFile(fset, path, nil, parser.AllErrors)
-			if err != nil {
-				return nil, err
-			}
-			ps[node.Name.Name] = node
 		}
 	}
-	c := &ASTCoder{
+	return &ASTCoder{
 		fset:       fset,
 		pkgs:       ps,
 		importPkgs: make(map[string]string),
+	}, nil
+}
+
+func LoadTypeFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) (gocoder.Type, error) {
+	c, err := NewASTCoder(path)
+	if err != nil {
+		return nil, err
 	}
-	return c.loadTypeFromSourceFileSet(typeName, opt)
+	return c.GetType(typeName, opts...)
 }
