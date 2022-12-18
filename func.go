@@ -2,18 +2,18 @@ package gocoder
 
 // Func type
 type Func interface {
-	Codeable
+	Codable
 
 	// Getter
 	GetType() FuncType
 	GetName() string
-	GetCodes() []Codeable
+	GetCodes() []Codable
 	GetArgs() []Arg
 	GetReturns() []Type
 	GetNotes() []Note
 	GetReceiver() Type
 
-	C(...Codeable) Func
+	C(...Codable) Func
 	Call(...interface{}) Value
 	ToCode() Code
 
@@ -32,7 +32,7 @@ const (
 type tFunc struct {
 	Type     FuncType
 	Name     string
-	Codes    []Codeable
+	Codes    []Codable
 	Args     []Arg
 	Returns  []Type
 	Receiver Receiver
@@ -51,7 +51,7 @@ func (t *tFunc) GetName() string {
 	return t.Name
 }
 
-func (t *tFunc) GetCodes() []Codeable {
+func (t *tFunc) GetCodes() []Codable {
 	return t.Codes
 }
 
@@ -81,7 +81,7 @@ func (t *tFunc) InterfaceForFunc() bool {
 	return true
 }
 
-func (t *tFunc) C(cs ...Codeable) Func {
+func (t *tFunc) C(cs ...Codable) Func {
 	t.Codes = append(t.Codes, cs...)
 	return t
 }
@@ -105,7 +105,7 @@ type tFuncCode struct {
 	*tFunc
 }
 
-func (t *tFuncCode) C(cs ...Codeable) Code {
+func (t *tFuncCode) C(cs ...Codable) Code {
 	t.Codes = append(t.Codes, cs...)
 	return t
 }

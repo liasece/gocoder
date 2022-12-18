@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// Codeable type
-type Codeable interface {
+// Codable type
+type Codable interface {
 	WriteCode(Writer)
 }
 
@@ -137,7 +137,7 @@ func pkgFunc(funcI interface{}) Value {
 }
 
 // NewForRange func
-func NewForRange(autoSet bool, typ FuncType, toValues Value, value Value, cs ...Codeable) ForRange {
+func NewForRange(autoSet bool, typ FuncType, toValues Value, value Value, cs ...Codable) ForRange {
 	return &tForRange{
 		Type:     typ,
 		AutoSet:  autoSet,
@@ -253,7 +253,7 @@ func NewTypeDetail(pkg string, name string) Type {
 }
 
 // NewIf func
-func NewIf(v Value, cs ...Codeable) If {
+func NewIf(v Value, cs ...Codable) If {
 	return &tIf{
 		IfV:   v,
 		Codes: cs,
@@ -343,16 +343,16 @@ func NewCode() Code {
 
 // code type
 type Code interface {
-	Codeable
-	C(cs ...Codeable) Code
-	GetCodes() []Codeable
+	Codable
+	C(cs ...Codable) Code
+	GetCodes() []Codable
 }
 
 type tCode struct {
-	Codes []Codeable
+	Codes []Codable
 }
 
-func (t *tCode) GetCodes() []Codeable {
+func (t *tCode) GetCodes() []Codable {
 	return t.Codes
 }
 
@@ -361,7 +361,7 @@ func (t *tCode) WriteCode(w Writer) {
 }
 
 // C func
-func (t *tCode) C(cs ...Codeable) Code {
+func (t *tCode) C(cs ...Codable) Code {
 	t.Codes = append(t.Codes, cs...)
 	return t
 }

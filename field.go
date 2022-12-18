@@ -1,7 +1,7 @@
 package gocoder
 
 type Field interface {
-	Codeable
+	Codable
 	GetTag() string
 	GetName() string
 	GetType() Type

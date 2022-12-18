@@ -1,7 +1,7 @@
 package gocoder
 
 type Struct interface {
-	Codeable
+	Codable
 	GetFields() []Field
 	AddFields([]Field)
 	FieldByName(name string) Field

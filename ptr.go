@@ -2,20 +2,20 @@ package gocoder
 
 // PtrChecker type
 type PtrChecker interface {
-	Codeable
+	Codable
 
 	GetCheckerValue() []Value
-	GetHandlers() []Codeable
+	GetHandlers() []Codable
 	GetIfNotNil() bool
 
 	AddChecker(vi ...interface{}) PtrChecker
-	C(cs ...Codeable) PtrChecker
+	C(cs ...Codable) PtrChecker
 	InterfaceForPtrChecker() bool
 }
 
 type tPtrChecker struct {
 	CheckerValue []Value
-	Handlers     []Codeable
+	Handlers     []Codable
 	IfNotNil     bool
 }
 
@@ -27,7 +27,7 @@ func (t *tPtrChecker) GetCheckerValue() []Value {
 	return t.CheckerValue
 }
 
-func (t *tPtrChecker) GetHandlers() []Codeable {
+func (t *tPtrChecker) GetHandlers() []Codable {
 	return t.Handlers
 }
 
@@ -41,12 +41,12 @@ func (t *tPtrChecker) AddChecker(vi ...interface{}) PtrChecker {
 	return t
 }
 
-func (t *tPtrChecker) C(cs ...Codeable) PtrChecker {
+func (t *tPtrChecker) C(cs ...Codable) PtrChecker {
 	t.Handlers = append(t.Handlers, cs...)
 	return t
 }
 
-func (t *tPtrChecker) Else(cs ...Codeable) PtrChecker {
+func (t *tPtrChecker) Else(cs ...Codable) PtrChecker {
 	t.Handlers = append(t.Handlers, cs...)
 	return t
 }

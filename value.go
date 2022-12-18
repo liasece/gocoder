@@ -9,13 +9,13 @@ import (
 
 // Value type
 type Value interface {
-	Codeable
+	Codable
 
 	// Getter
 	GetAction() ValueAction
 	GetName() string
 	GetSrcValue() interface{}
-	GetLeft() Codeable
+	GetLeft() Codable
 	GetRight() Value
 	GetFunc() Func
 	GetCallArgs() []Value
@@ -118,7 +118,7 @@ var valueActionForceNeedParent = map[ValueAction]bool{
 }
 
 type tValue struct {
-	Left   Codeable
+	Left   Codable
 	Action ValueAction
 	Right  Value
 
@@ -149,7 +149,7 @@ func (t *tValue) GetSrcValue() interface{} {
 	return t.IValue
 }
 
-func (t *tValue) GetLeft() Codeable {
+func (t *tValue) GetLeft() Codable {
 	return t.Left
 }
 

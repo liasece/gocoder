@@ -2,15 +2,15 @@ package gocoder
 
 // ForRange func
 type ForRange interface {
-	Codeable
+	Codable
 
 	GetType() FuncType
 	GetAutoSet() bool
 	GetToValues() Value
 	GetValue() Value
-	GetCodes() []Codeable
+	GetCodes() []Codable
 
-	C(cs ...Codeable) ForRange
+	C(cs ...Codable) ForRange
 	ToCode() Code
 
 	InterfaceForRange() bool
@@ -21,14 +21,14 @@ type tForRange struct {
 	AutoSet  bool
 	ToValues Value
 	Value    Value
-	Codes    []Codeable
+	Codes    []Codable
 }
 
 func (t *tForRange) WriteCode(w Writer) {
 	w.WriteCode(t)
 }
 
-func (t *tForRange) C(cs ...Codeable) ForRange {
+func (t *tForRange) C(cs ...Codable) ForRange {
 	t.Codes = append(t.Codes, cs...)
 	return t
 }
@@ -49,7 +49,7 @@ func (t *tForRange) GetValue() Value {
 	return t.Value
 }
 
-func (t *tForRange) GetCodes() []Codeable {
+func (t *tForRange) GetCodes() []Codable {
 	return t.Codes
 }
 
@@ -67,7 +67,7 @@ type tForRangeCode struct {
 	*tForRange
 }
 
-func (t *tForRangeCode) C(codes ...Codeable) Code {
+func (t *tForRangeCode) C(codes ...Codable) Code {
 	t.tForRange.C(codes...)
 	return t
 }

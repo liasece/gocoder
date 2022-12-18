@@ -3,43 +3,43 @@ package gocoder
 // ElseIf type
 type ElseIf interface {
 	BaseIf
-	Else(...Codeable) Else
-	C(cs ...Codeable) ElseIf
+	Else(...Codable) Else
+	C(cs ...Codable) ElseIf
 }
 
 // Else type
 type Else interface {
 	BaseIf
-	C(cs ...Codeable) Else
+	C(cs ...Codable) Else
 }
 
 // If type
 type If interface {
 	BaseIf
-	Else(...Codeable) Else
-	ElseIf(interface{}, ...Codeable) ElseIf
-	C(cs ...Codeable) If
+	Else(...Codable) Else
+	ElseIf(interface{}, ...Codable) ElseIf
+	C(cs ...Codable) If
 	ToCode() Code
 }
 
 // BaseIf type
 type BaseIf interface {
-	Codeable
+	Codable
 	SetPre(pre BaseIf)
 	SetNext(next BaseIf)
 	Append(base BaseIf)
 	Tail() BaseIf
 	Next() BaseIf
 	Pre() BaseIf
-	AddCode(cs ...Codeable)
+	AddCode(cs ...Codable)
 	GetValue() Value
-	GetCodes() []Codeable
+	GetCodes() []Codable
 	InterfaceForIf() bool
 }
 
 type tIf struct {
 	IfV   Value
-	Codes []Codeable
+	Codes []Codable
 	IPre  BaseIf
 	INext BaseIf
 }
@@ -48,7 +48,7 @@ func (t *tIf) WriteCode(w Writer) {
 	w.WriteCode(t)
 }
 
-func (t *tIf) Else(codes ...Codeable) Else {
+func (t *tIf) Else(codes ...Codable) Else {
 	t.Tail().Append(&tIf{
 		Codes: codes,
 	})
@@ -57,16 +57,16 @@ func (t *tIf) Else(codes ...Codeable) Else {
 	}
 }
 
-func (t *tIf) C(codes ...Codeable) If {
+func (t *tIf) C(codes ...Codable) If {
 	t.Tail().AddCode(codes...)
 	return t
 }
 
-func (t *tIf) AddCode(codes ...Codeable) {
+func (t *tIf) AddCode(codes ...Codable) {
 	t.Codes = append(t.Codes, codes...)
 }
 
-func (t *tIf) ElseIf(i interface{}, codes ...Codeable) ElseIf {
+func (t *tIf) ElseIf(i interface{}, codes ...Codable) ElseIf {
 	v := MustToValue("", i)
 	t.Tail().Append(&tIf{
 		IfV:   v,
@@ -107,7 +107,7 @@ func (t *tIf) SetPre(pre BaseIf) {
 	t.IPre = pre
 }
 
-func (t *tIf) GetCodes() []Codeable {
+func (t *tIf) GetCodes() []Codable {
 	return t.Codes
 }
 
@@ -129,7 +129,7 @@ type tElseIf struct {
 	*tIf
 }
 
-func (t *tElseIf) C(codes ...Codeable) ElseIf {
+func (t *tElseIf) C(codes ...Codable) ElseIf {
 	t.Tail().AddCode(codes...)
 	return t
 }
@@ -138,7 +138,7 @@ type tElse struct {
 	*tIf
 }
 
-func (t *tElse) C(codes ...Codeable) Else {
+func (t *tElse) C(codes ...Codable) Else {
 	t.Tail().AddCode(codes...)
 	return t
 }
@@ -147,7 +147,7 @@ type tIfCode struct {
 	*tIf
 }
 
-func (t *tIfCode) C(codes ...Codeable) Code {
+func (t *tIfCode) C(codes ...Codable) Code {
 	t.Tail().AddCode(codes...)
 	return t
 }

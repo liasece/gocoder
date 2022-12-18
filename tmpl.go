@@ -6,7 +6,7 @@ import (
 	"text/template"
 )
 
-func TemplateFromFile(tmplPath string, env interface{}, fn template.FuncMap) (Codeable, error) {
+func TemplateFromFile(tmplPath string, env interface{}, fn template.FuncMap) (Codable, error) {
 	b, err := os.ReadFile(tmplPath)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func TemplateRowFromFile(tmplPath string, env interface{}, fn template.FuncMap) 
 	return TemplateRaw(string(b), env, fn)
 }
 
-func Template(tmplContent string, env interface{}, fn template.FuncMap) (Codeable, error) {
+func Template(tmplContent string, env interface{}, fn template.FuncMap) (Codable, error) {
 	raw, err := TemplateRaw(tmplContent, env, fn)
 	return NewValue(raw, nil), err
 }

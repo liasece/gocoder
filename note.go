@@ -2,7 +2,7 @@ package gocoder
 
 // Note type
 type Note interface {
-	Codeable
+	Codable
 	GetContent() string
 	GetKind() NoteKind
 	InterfaceForNote() bool

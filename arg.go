@@ -2,7 +2,7 @@ package gocoder
 
 // Arg type
 type Arg interface {
-	Codeable
+	Codable
 
 	// Getter
 	GetName() string

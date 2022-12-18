@@ -39,10 +39,10 @@ type Writer interface {
 	ParenthesesArgs(vs ...Arg)
 	ParenthesesTypes(vs ...Type)
 	Block(is ...interface{})
-	BlockCodes(cs ...Codeable)
+	BlockCodes(cs ...Codable)
 	InlineBlock(is ...interface{})
-	InlineBlockCodes(cs ...Codeable)
-	WriteCode(c Codeable)
+	InlineBlockCodes(cs ...Codable)
+	WriteCode(c Codable)
 	In()
 	Out()
 	InN(n int)
@@ -62,7 +62,7 @@ type tWriter struct {
 }
 
 // ToCode func
-func ToCode(c Codeable, opts ...*ToCodeOption) string {
+func ToCode(c Codable, opts ...*ToCodeOption) string {
 	opt := MergeToCodeOpt(opts...)
 	pkgTool := opt.pkgTool
 	if pkgTool == nil {
@@ -165,7 +165,7 @@ func GetImportStr(pkgTool PkgTool, skip []string) (string, error) {
 	return "", nil
 }
 
-func WriteToFileStr(c Codeable, opts ...*ToCodeOption) (string, error) {
+func WriteToFileStr(c Codable, opts ...*ToCodeOption) (string, error) {
 	buffer := &bytes.Buffer{}
 	err := Write(buffer, c, opts...)
 	if err != nil {
@@ -174,7 +174,7 @@ func WriteToFileStr(c Codeable, opts ...*ToCodeOption) (string, error) {
 	return buffer.String(), nil
 }
 
-func Write(w io.Writer, c Codeable, opts ...*ToCodeOption) error {
+func Write(w io.Writer, c Codable, opts ...*ToCodeOption) error {
 	opt := MergeToCodeOpt(opts...)
 	if opt.pkgTool == nil {
 		opt.pkgTool = NewDefaultPkgTool()
@@ -215,7 +215,7 @@ func Write(w io.Writer, c Codeable, opts ...*ToCodeOption) error {
 	return nil
 }
 
-func WriteToFile(filename string, c Codeable, opts ...*ToCodeOption) error {
+func WriteToFile(filename string, c Codable, opts ...*ToCodeOption) error {
 	opt := MergeToCodeOpt(opts...)
 	if opt.pkgTool == nil {
 		opt.pkgTool = NewDefaultPkgTool()
@@ -257,7 +257,7 @@ func (w *tWriter) SetPkgTool(v PkgTool) {
 }
 
 // Line func
-func (w *tWriter) WriteCode(c Codeable) {
+func (w *tWriter) WriteCode(c Codable) {
 	switch t := c.(type) {
 	case Receiver:
 		w.Add("(", t.GetName(), " ", t.GetType(), ")")
@@ -654,7 +654,7 @@ func (w *tWriter) add(interval bool, is ...interface{}) {
 			w.AddStr(strings.Repeat("\t", w.indent))
 			w.needIndent = false
 		}
-		if v, ok := i.(Codeable); ok {
+		if v, ok := i.(Codable); ok {
 			v.WriteCode(w)
 		} else {
 			w.AddStr(i)
@@ -690,7 +690,7 @@ func (w *tWriter) list(parent bool, is ...interface{}) {
 		if index != 0 {
 			w.AddStr(", ")
 		}
-		if v, ok := i.(Codeable); ok {
+		if v, ok := i.(Codable); ok {
 			w.WriteCode(v)
 		} else {
 			w.AddStr(prefix, i)
@@ -731,7 +731,7 @@ func (w *tWriter) Block(is ...interface{}) {
 }
 
 // BlockCodes func
-func (w *tWriter) BlockCodes(cs ...Codeable) {
+func (w *tWriter) BlockCodes(cs ...Codable) {
 	is := make([]interface{}, len(cs))
 	for i, v := range cs {
 		is[i] = v
@@ -750,7 +750,7 @@ func (w *tWriter) InlineBlock(is ...interface{}) {
 }
 
 // InlineBlockCodes func
-func (w *tWriter) InlineBlockCodes(cs ...Codeable) {
+func (w *tWriter) InlineBlockCodes(cs ...Codable) {
 	is := make([]interface{}, len(cs))
 	for i, v := range cs {
 		is[i] = v

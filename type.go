@@ -7,7 +7,7 @@ import (
 
 // Type type
 type Type interface {
-	Codeable
+	Codable
 	RefType() reflect.Type
 	IsPtr() bool
 	IsSlice() bool

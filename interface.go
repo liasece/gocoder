@@ -1,7 +1,7 @@
 package gocoder
 
 type Interface interface {
-	Codeable
+	Codable
 	GetFuncs() []Func
 	FuncByName(name string) Func
 	GetName() string

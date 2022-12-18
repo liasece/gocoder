@@ -12,7 +12,7 @@ func TestGetMethods(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	list := make([]gocoder.Codeable, 0, len(res))
+	list := make([]gocoder.Codable, 0, len(res))
 	for _, v := range res {
 		list = append(list, v)
 	}

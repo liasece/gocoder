@@ -30,7 +30,7 @@ func Len(arg gocoder.Value) gocoder.Value {
 }
 
 // ForRange func
-func ForRange(autoSet bool, toValues gocoder.Value, value gocoder.Value, cs ...gocoder.Codeable) gocoder.ForRange {
+func ForRange(autoSet bool, toValues gocoder.Value, value gocoder.Value, cs ...gocoder.Codable) gocoder.ForRange {
 	return gocoder.NewForRange(autoSet, gocoder.FuncTypeDefault, toValues, value)
 }
 
@@ -55,7 +55,7 @@ func PtrCheckerNotNil(checkerValue ...gocoder.Value) gocoder.PtrChecker {
 }
 
 // If func
-func If(v gocoder.Value, cs ...gocoder.Codeable) gocoder.If {
+func If(v gocoder.Value, cs ...gocoder.Codable) gocoder.If {
 	return gocoder.NewIf(v, cs...)
 }
 

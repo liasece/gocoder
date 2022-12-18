@@ -2,7 +2,7 @@ package gocoder
 
 // Return type
 type Return interface {
-	Codeable
+	Codable
 
 	GetValue() Value
 	InterfaceForReturn() bool
