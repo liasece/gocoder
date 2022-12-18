@@ -1,6 +1,9 @@
 package source
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type BigStruct struct {
 	ID       string    `json:"id"`
@@ -8,4 +11,18 @@ type BigStruct struct {
 	UserID   string    `bson:"userID"`
 	CreateAt time.Time `bson:"createAt"`
 	Ready    bool      `bson:"ready"`
+}
+
+type IBigStruct interface {
+	GetBigStruct() BigStruct
+	SetBigStruct(BigStruct) error
+	SetBigStructByName(ctx context.Context, name string, typ *BigStruct) (*BigStruct, bool, error)
+}
+
+func (b *BigStruct) GetBigStruct() BigStruct {
+	return *b
+}
+
+func (b *BigStruct) IsBigStruct() bool {
+	return true
 }

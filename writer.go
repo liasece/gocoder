@@ -467,9 +467,6 @@ func (w *tWriter) FuncToCode(t Func) {
 		}()
 	}
 	if t.GetType() != FuncTypeInline {
-		if len(t.GetNotes()) == 0 || !strings.HasPrefix(t.GetNotes()[0].GetContent(), t.GetName()) {
-			w.Add(NewNote(t.GetName()+" func", NoteKindLine))
-		}
 		if len(t.GetNotes()) > 0 {
 			w.AddNote(t.GetNotes()...)
 		}

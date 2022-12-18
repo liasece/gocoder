@@ -37,6 +37,7 @@ type Type interface {
 	SetNamed(string)
 	SetPkg(string)
 	GetNext() Type
+	GetStruct() Struct
 
 	AllSub() []Type // list all type chian nodes, top type in last index
 	HasPtrSubType() bool
@@ -413,4 +414,8 @@ func (t *tType) Zero() Value {
 
 func (t *tType) InterfaceForType() bool {
 	return true
+}
+
+func (t *tType) GetStruct() Struct {
+	return t.Struct
 }
