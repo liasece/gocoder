@@ -51,7 +51,7 @@ func (c *ASTCoder) GetFuncsFromASTFuncType(receiver gocoder.Receiver, name strin
 
 	if se.Params != nil {
 		for _, arg := range se.Params.List {
-			argType, err := c.GetTypeFromASTExpr(arg.Type, opt)
+			argType, err := c.GetTypeFromASTNode(arg.Type, opt)
 			if err != nil {
 				return nil, err
 			}
@@ -62,7 +62,7 @@ func (c *ASTCoder) GetFuncsFromASTFuncType(receiver gocoder.Receiver, name strin
 	}
 	if se.Results != nil {
 		for _, arg := range se.Results.List {
-			argType, err := c.GetTypeFromASTExpr(arg.Type, opt)
+			argType, err := c.GetTypeFromASTNode(arg.Type, opt)
 			if err != nil {
 				return nil, err
 			}

@@ -19,16 +19,19 @@ func (c *ASTCoder) GetMethods(reviverTypeName string, opt *gocoder.ToCodeOption)
 			if !ok {
 				return true
 			}
-			ast.Print(c.fset, node)
 			if ts.Recv == nil || len(ts.Recv.List) == 0 {
 				return true
 			}
-			reviverType, err := c.GetTypeFromASTExpr(ts.Recv.List[0].Type, opt)
+			reviverType, err := c.GetTypeFromASTNode(ts.Recv.List[0].Type, opt)
 			if err != nil {
-				log.Error("GetMethods GetTypeFromASTExpr error", log.Any("err", err))
+				log.Error("GetMethods GetTypeFromASTNode error", log.Any("err", err))
 				return true
 			}
-			if reviverType.String() != reviverTypeName && reviverType.String() != "*"+reviverTypeName {
+			name := ""
+			if reviverType != nil {
+				name = reviverType.String()
+			}
+			if name != reviverTypeName && name != "*"+reviverTypeName {
 				return true
 			}
 			fn, err := c.GetFuncsFromASTFuncDecl(ts, opt)

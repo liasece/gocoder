@@ -25,37 +25,48 @@ func (c *ASTCoder) GetTypeFromASTStructType(name string, st *ast.StructType, opt
 	return res, nil
 }
 
-func (c *ASTCoder) GetTypeFromASTExpr(st ast.Expr, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
+func (c *ASTCoder) getTypeFromASTNodeWithName(name string, st ast.Node, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
 	switch t := st.(type) {
 	case *ast.Ident:
-		return c.GetTypeFromASTIdent(st.(*ast.Ident), opt)
+		return c.GetTypeFromASTIdent(t, opt)
 	case *ast.StarExpr:
-		res, err := c.GetTypeFromASTExpr(st.(*ast.StarExpr).X, opt)
+		res, err := c.getTypeFromASTNodeWithName(name, t.X, opt)
 		if err != nil {
 			return nil, err
 		}
-		return res.TackPtr(), nil
+		if res != nil {
+			return res.TackPtr(), nil
+		} else {
+			return nil, nil
+		}
 	case *ast.SelectorExpr:
 		str := t.X.(*ast.Ident).Name + "." + t.Sel.Name
 		return TypeStringToZeroInterface(str), nil
+	case *ast.TypeSpec:
+		return c.getTypeFromASTNodeWithName(t.Name.Name, t.Type, opt)
+	case *ast.StructType:
+		return c.GetTypeFromASTStructType(name, t, opt)
+	default:
+		log.Error("name == typeName but type unknown", log.Any("name", name), log.Any("type", reflect.TypeOf(t)))
 	}
 	return nil, nil
 }
 
+func (c *ASTCoder) GetTypeFromASTNode(st ast.Node, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
+	return c.getTypeFromASTNodeWithName("", st, opt)
+}
+
 func (c *ASTCoder) GetTypeFromASTIdent(st *ast.Ident, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
 	typeStr := st.Name
-	// log.Warn("GetTypeFromASTIdent walker find", log.Any("typeStr", typeStr), log.Reflect("info", st), log.Any("type", reflect.TypeOf(st)))
 	res := TypeStringToZeroInterface(typeStr)
 	if res == nil {
 		// not basic type
 		t, err := c.GetType(typeStr, opt)
 		if err != nil {
 			log.Warn("GetTypeFromASTIdent GetTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj), log.Any("st", st))
-			ast.Print(c.fset, st)
 			return nil, nil
 		}
 		if t == nil {
-			log.Warn("not found type", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj), log.Any("st", st))
 		} else {
 			res = t
 		}
@@ -70,9 +81,7 @@ func (c *ASTCoder) GetType(typeName string, opt *gocoder.ToCodeOption) (gocoder.
 	var resType gocoder.Type
 	var resErr error
 	typeTypeName := typeName
-	// typePkgName := ""
 	if ss := strings.Split(typeName, "."); len(ss) == 2 {
-		// typePkgName = ss[0]
 		typeTypeName = ss[1]
 	}
 	for _, pkgV := range c.pkgs {
@@ -89,42 +98,27 @@ func (c *ASTCoder) GetType(typeName string, opt *gocoder.ToCodeOption) (gocoder.
 					if len(ss) > 0 {
 						c.importPkgs[ss[len(ss)-1]] = path
 					}
-					// log.Error("add import", log.Any("key", ss[len(ss)-1]), log.Any("value", path))
-					// ast.Print(c.fset, ts)
 				}
 			}
-			// log.Error("walker", log.Any("node", node), log.Any("nodeType", reflect.TypeOf(node)))
 			ts, ok := node.(*ast.TypeSpec)
 			if !ok {
 				return true
 			}
 			if ts.Name.Name == typeTypeName {
-				// found target type
-				if st, ok := ts.Type.(*ast.StructType); ok {
-					resType, resErr = c.GetTypeFromASTStructType(ts.Name.Name, st, opt)
+				resType, resErr = c.GetTypeFromASTNode(ts, opt)
+				if resType != nil && resType.IsStruct() {
 					if pkgPath := opt.GetPkgPath(); pkgPath != nil && pkgInReference(*pkgPath) == pkg {
 						resType.SetPkg(*pkgPath)
-						// log.Warn("GetTypeFromSourceFileSet GetTypeFromASTStructType set pkg from opt", log.Reflect("ts.Name.Name", ts.Name.Name), log.Any("pkgPath", pkgPath), log.Any("nowPkg", pkg))
 					} else {
 						resType.SetPkg(pkg)
 					}
-					return false
 				}
-				if st, ok := ts.Type.(*ast.Ident); ok {
-					resType, resErr = c.GetTypeFromASTIdent(st, opt)
-					return false
-				}
-				log.Error("ts.Name.Name == typeName but type unknown", log.Any("loadTypeName", typeName), log.Any("typeTypeName", typeTypeName), log.Any("type", reflect.TypeOf(ts.Type)))
 			}
 			return true
 		}), node)
 		if resErr != nil || resType != nil {
 			break
 		}
-	}
-	if resType == nil {
-		// 	return nil, errors.New("not found type: " + typeName + "(" + typeTypeName + ")")
-		log.Warn("GetTypeFromSourceFileSet not found type", log.Any("typeName", typeName), log.Any("typeTypeName", typeTypeName))
 	}
 	return resType, resErr
 }

@@ -11,7 +11,7 @@ func (c *ASTCoder) GetReceiverFromASTField(st *ast.Field, opt *gocoder.ToCodeOpt
 	if len(st.Names) > 0 {
 		name = st.Names[0].Name
 	}
-	t, err := c.GetTypeFromASTExpr(st.Type, opt)
+	t, err := c.getTypeFromASTNodeWithName(name, st.Type, opt)
 	if err != nil {
 		return nil, err
 	}

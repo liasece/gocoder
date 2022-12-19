@@ -47,11 +47,18 @@ func (c *ASTCoder) GetStructFieldFromASTStruct(st *ast.StructType, opt *gocoder.
 			typeStr = se.Name
 		}
 		if se, ok := astType.(*ast.ArrayType); ok {
-			if tmp, ok := se.Elt.(*ast.StarExpr); ok {
-				typeStr = tmp.X.(*ast.Ident).Name
-				typeAfterHandle = append(typeAfterHandle, afterHandleFuncPtr)
-			} else {
-				typeStr = se.Elt.(*ast.Ident).Name
+			switch tmp := se.Elt.(type) {
+			case *ast.StarExpr:
+				switch tmp := tmp.X.(type) {
+				case *ast.Ident:
+					typeStr = tmp.Name
+					typeAfterHandle = append(typeAfterHandle, afterHandleFuncPtr)
+				case *ast.SelectorExpr:
+					typeStr = tmp.Sel.Name
+					pkg = tmp.X.(*ast.Ident).Name
+				}
+			case *ast.Ident:
+				typeStr = tmp.Name
 			}
 			typeAfterHandle = append(typeAfterHandle, afterHandleFuncSlice)
 		}
@@ -92,7 +99,7 @@ func (c *ASTCoder) GetStructFieldFromASTStruct(st *ast.StructType, opt *gocoder.
 			}
 		}
 		if typ == nil {
-			log.Warn("not found type", log.Any("typeStr", typeStr), log.Any("st", st))
+			// log.Warn("not found type", log.Any("typeStr", typeStr), log.Any("st", st))
 		} else if !('a' <= name[0] && name[0] <= 'z' || name[0] == '_') {
 			for _, f := range typeAfterHandle {
 				typ = f(typ)
