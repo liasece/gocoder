@@ -11,6 +11,7 @@ type Type interface {
 	RefType() reflect.Type
 	IsPtr() bool
 	IsSlice() bool
+	IsMap() bool
 	UnPtr() Type
 	IsStruct() bool
 	TackPtr() Type
@@ -78,6 +79,10 @@ func (t *tType) IsPtr() bool {
 
 func (t *tType) IsSlice() bool {
 	return t.Kind() == reflect.Slice
+}
+
+func (t *tType) IsMap() bool {
+	return t.Kind() == reflect.Map
 }
 
 // list all type chian nodes, top type in last index
@@ -364,10 +369,16 @@ func (t *tType) MethodByName(name string) (reflect.Method, bool) {
 }
 
 func (t *tType) Name() string {
-	if t.Type != nil {
+	if t.Type != nil && t.Type.Name() != "" {
 		return t.Type.Name()
 	}
-	return t.GetNamed()
+	{
+		// from named
+		if t.GetNamed() != "" {
+			return t.GetNamed()
+		}
+	}
+	return t.String()
 }
 
 func (t *tType) GetNamed() string {

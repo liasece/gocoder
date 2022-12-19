@@ -44,7 +44,7 @@ func (c *ASTCoder) GetMethods(reviverTypeName string, opt *gocoder.ToCodeOption)
 		}), node)
 	}
 	if res == nil {
-		log.Warn("GetTypeFromSourceFileSet not found type", log.Any("reviverTypeName", reviverTypeName))
+		log.Debug("GetMethods not found", log.Any("reviverTypeName", reviverTypeName))
 	}
 	return res, nil
 }

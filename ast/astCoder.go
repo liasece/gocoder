@@ -16,9 +16,14 @@ type ASTPkg struct {
 }
 
 type ASTCoder struct {
-	fset       *token.FileSet
-	pkgs       []*ASTPkg
-	importPkgs map[string]string
+	fset         *token.FileSet
+	pkgs         []*ASTPkg
+	importPkgs   map[string]string
+	DecodedTypes map[string]*ASTTyped
+}
+
+type ASTTyped struct {
+	gocoder.Type
 }
 
 func NewASTCoder(paths ...string) (*ASTCoder, error) {
@@ -52,9 +57,10 @@ func NewASTCoder(paths ...string) (*ASTCoder, error) {
 		}
 	}
 	return &ASTCoder{
-		fset:       fset,
-		pkgs:       ps,
-		importPkgs: make(map[string]string),
+		fset:         fset,
+		pkgs:         ps,
+		importPkgs:   make(map[string]string),
+		DecodedTypes: make(map[string]*ASTTyped),
 	}, nil
 }
 

@@ -20,7 +20,6 @@ func (c *ASTCoder) GetFuncsFromASTFieldList(receiver gocoder.Receiver, st *ast.F
 }
 
 func (c *ASTCoder) GetFuncsFromASTFuncDecl(st *ast.FuncDecl, opt *gocoder.ToCodeOption) (gocoder.Func, error) {
-	// ast.Print(c.fset, st)
 	var name string
 	{
 		// get name
@@ -34,7 +33,6 @@ func (c *ASTCoder) GetFuncsFromASTFuncDecl(st *ast.FuncDecl, opt *gocoder.ToCode
 }
 
 func (c *ASTCoder) GetFuncsFromASTField(receiver gocoder.Receiver, st *ast.Field, opt *gocoder.ToCodeOption) (gocoder.Func, error) {
-	// ast.Print(c.fset, st)
 	var name string
 	{
 		// get name

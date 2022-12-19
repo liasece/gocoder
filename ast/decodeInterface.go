@@ -53,7 +53,7 @@ func (c *ASTCoder) GetInterface(name string, opt *gocoder.ToCodeOption) (gocoder
 					resType, resErr = c.GetInterfaceFromASTInterfaceType(ts.Name.Name, st, opt)
 					return false
 				}
-				log.Error("ts.Name.Name == name but type unknown", log.Any("type", reflect.TypeOf(ts.Type)))
+				log.Error("GetInterface ts.Name.Name == name but type unknown", log.Any("type", reflect.TypeOf(ts.Type)))
 			}
 			return true
 		}), node)
@@ -62,7 +62,7 @@ func (c *ASTCoder) GetInterface(name string, opt *gocoder.ToCodeOption) (gocoder
 		}
 	}
 	if resType == nil {
-		log.Warn("GetTypeFromSourceFileSet not found type", log.Any("name", name), log.Any("typeTypeName", typeTypeName))
+		log.Warn("GetInterface not found type", log.Any("name", name), log.Any("typeTypeName", typeTypeName))
 	}
 	return resType, resErr
 }
