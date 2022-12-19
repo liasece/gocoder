@@ -9,8 +9,8 @@ import (
 
 func (c *ASTCoder) GetMethods(reviverTypeName string, opt *gocoder.ToCodeOption) ([]gocoder.Func, error) {
 	var res []gocoder.Func
-	for _, pkgV := range c.pkgs {
-		_, node := pkgV.name, pkgV.node
+	for _, pkgV := range c.pkgs.List {
+		node := pkgV.Package
 		ast.Walk((walker)(func(node ast.Node) bool {
 			if node == nil {
 				return true

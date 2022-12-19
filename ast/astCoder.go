@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"strings"
 
 	"github.com/liasece/gocoder"
@@ -17,7 +16,7 @@ type ASTPkg struct {
 
 type ASTCoder struct {
 	fset         *token.FileSet
-	pkgs         []*ASTPkg
+	pkgs         *Packages
 	importPkgs   map[string]string
 	DecodedTypes map[string]*ASTTyped
 }
@@ -28,32 +27,16 @@ type ASTTyped struct {
 
 func NewASTCoder(paths ...string) (*ASTCoder, error) {
 	fset := token.NewFileSet()
-	ps := make([]*ASTPkg, 0)
+	ps := &Packages{}
 	for _, path := range paths {
 		pathSS := strings.Split(path, ",")
 		for _, path := range pathSS {
-			if fileInfo, err := os.Stat(path); err == nil && fileInfo.IsDir() {
-				// from path
-				pkgs, err := ParseDir(fset, path, nil, parser.AllErrors)
-				if err != nil {
-					return nil, err
-				}
-				for k, v := range pkgs {
-					ps = append(ps, &ASTPkg{
-						name: k,
-						node: v,
-					})
-				}
-			} else {
-				node, err := parser.ParseFile(fset, path, nil, parser.AllErrors)
-				if err != nil {
-					return nil, err
-				}
-				ps = append(ps, &ASTPkg{
-					name: node.Name.Name,
-					node: node,
-				})
+			// from path
+			pkgs, err := Parse(fset, path, nil, parser.AllErrors)
+			if err != nil {
+				return nil, err
 			}
+			ps.MergeFrom(pkgs)
 		}
 	}
 	return &ASTCoder{

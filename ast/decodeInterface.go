@@ -27,8 +27,8 @@ func (c *ASTCoder) GetInterface(name string, opt *gocoder.ToCodeOption) (gocoder
 		// typePkgName = ss[0]
 		typeTypeName = ss[1]
 	}
-	for _, pkgV := range c.pkgs {
-		_, node := pkgV.name, pkgV.node
+	for _, pkgV := range c.pkgs.List {
+		node := pkgV.Package
 		ast.Walk((walker)(func(node ast.Node) bool {
 			if node == nil {
 				return true

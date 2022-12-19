@@ -40,8 +40,7 @@ func (c *ASTCoder) getTypeFromASTNodeWithName(name string, st ast.Node, opt *goc
 			return nil, nil
 		}
 	case *ast.SelectorExpr:
-		str := t.X.(*ast.Ident).Name + "." + t.Sel.Name
-		return TypeStringToZeroInterface(str), nil
+		return c.GetType(t.X.(*ast.Ident).Name+"."+t.Sel.Name, opt)
 	case *ast.TypeSpec:
 		return c.getTypeFromASTNodeWithName(t.Name.Name, t.Type, opt)
 	case *ast.StructType:
@@ -122,16 +121,16 @@ func (c *ASTCoder) GetType(typeName string, opt *gocoder.ToCodeOption) (gocoder.
 
 	var resType gocoder.Type
 	var resErr error
-	typeTypeName := typeName
-	if ss := strings.Split(typeName, "."); len(ss) == 2 {
-		typeTypeName = ss[1]
-	}
-	basicType := TypeStringToZeroInterface(typeTypeName)
+	basicType := TypeStringToZeroInterface(typeName)
 	if basicType != nil {
 		resType = basicType
 	} else {
-		for _, pkgV := range c.pkgs {
-			pkg, node := pkgV.name, pkgV.node
+		typeTypeName := typeName
+		if ss := strings.Split(typeName, "."); len(ss) == 2 {
+			typeTypeName = ss[1]
+		}
+		for _, pkgV := range c.pkgs.List {
+			pkg, node := pkgV.Name, pkgV.Package
 			ast.Walk((walker)(func(node ast.Node) bool {
 				if node == nil {
 					return true

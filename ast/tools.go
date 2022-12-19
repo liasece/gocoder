@@ -2,67 +2,12 @@ package ast
 
 import (
 	"go/ast"
-	"go/parser"
-	"go/token"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/liasece/gocoder"
 )
-
-func ParseDir(fset *token.FileSet, path string, filter func(fs.FileInfo) bool, mode parser.Mode) (pkgs map[string]*ast.Package, first error) {
-	list, err := os.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-
-	pkgs = make(map[string]*ast.Package)
-	for _, d := range list {
-		if d.IsDir() {
-			ps, err := ParseDir(fset, filepath.Join(path, d.Name()), filter, mode)
-			if err != nil {
-				return nil, err
-			}
-			for k, v := range ps {
-				pkgs[k] = v
-			}
-			continue
-		}
-		if !strings.HasSuffix(d.Name(), ".go") {
-			continue
-		}
-		if filter != nil {
-			info, err := d.Info()
-			if err != nil {
-				return nil, err
-			}
-			if !filter(info) {
-				continue
-			}
-		}
-		filename := filepath.Join(path, d.Name())
-		if src, err := parser.ParseFile(fset, filename, nil, mode); err == nil {
-			name := src.Name.Name
-			pkg, found := pkgs[name]
-			if !found {
-				pkg = &ast.Package{
-					Name:  name,
-					Files: make(map[string]*ast.File),
-				}
-				pkgs[name] = pkg
-			}
-			pkg.Files[filename] = src
-		} else if first == nil {
-			first = err
-		}
-	}
-
-	return
-}
 
 // wrap a function to fulfill ast.Visitor interface
 type walker func(ast.Node) bool
