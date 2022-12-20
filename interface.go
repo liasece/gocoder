@@ -39,7 +39,12 @@ func (t *tInterface) FuncByName(name string) Func {
 
 func (t *tInterface) GetType() Type {
 	return &tType{
-		Str: t.GetName(),
+		Str:    t.GetName(),
+		Type:   nil,
+		Pkg:    "",
+		Struct: nil,
+		Named:  "",
+		Next:   nil,
 	}
 }
 

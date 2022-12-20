@@ -9,167 +9,144 @@ import (
 	"github.com/liasece/log"
 )
 
-func (c *ASTCoder) GetTypeFromASTStructType(name string, st *ast.StructType, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
-	fields, err := c.GetStructFieldFromASTStruct(st, opt)
-	if err != nil {
-		return nil, err
-	}
-	res := gocoder.NewStruct(name, fields).GetType()
-	for i := 0; i < res.NumField(); i++ {
-		f := res.Field(i)
-		t := f.GetType()
-		if t.Package() != res.Package() && c.importPkgs[t.Package()] != "" {
-			t.SetPkg(c.importPkgs[t.Package()])
-		}
-	}
-	return res, nil
+func (c *CodeDecoder) GetTypeFromASTStructType(ctx DecoderContext, st *ast.StructType) gocoder.Type {
+	fields := c.GetStructFieldFromASTStruct(ctx, st)
+	res := gocoder.NewStruct(ctx.GetBuildingItemName(), fields).GetType()
+	res.SetPkg(ctx.GetCurrentPkg())
+	return res
 }
 
-func (c *ASTCoder) getTypeFromASTNodeWithName(name string, st ast.Node, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
+func (c *CodeDecoder) getTypeFromASTNodeWithName(ctx DecoderContext, st ast.Node) gocoder.Type {
 	switch t := st.(type) {
 	case *ast.Ident:
-		return c.GetTypeFromASTIdent(t, opt)
+		return c.GetTypeFromASTIdent(ctx, t)
 	case *ast.StarExpr:
-		res, err := c.getTypeFromASTNodeWithName(name, t.X, opt)
-		if err != nil {
-			return nil, err
-		}
+		res := c.getTypeFromASTNodeWithName(ctx, t.X)
 		if res != nil {
-			return res.TackPtr(), nil
-		} else {
-			return nil, nil
+			return res.TackPtr()
 		}
+		return nil
 	case *ast.SelectorExpr:
-		return c.GetType(t.X.(*ast.Ident).Name+"."+t.Sel.Name, opt)
+		// like time.Time
+		pkgName := ctx.GetPkgByAlias(t.X.(*ast.Ident).Name)
+		return c.GetType(pkgName + "." + t.Sel.Name)
 	case *ast.TypeSpec:
-		return c.getTypeFromASTNodeWithName(t.Name.Name, t.Type, opt)
+		return c.getTypeFromASTNodeWithName(ctx, t.Type)
 	case *ast.StructType:
-		return c.GetTypeFromASTStructType(name, t, opt)
+		return c.GetTypeFromASTStructType(ctx, t)
 	case *ast.ArrayType:
-		res, err := c.getTypeFromASTNodeWithName(name, t.Elt, opt)
-		if err != nil {
-			return nil, err
-		}
+		res := c.getTypeFromASTNodeWithName(ctx, t.Elt)
 		if res != nil {
-			return res.Slice(), nil
-		} else {
-			return nil, nil
+			return res.Slice()
 		}
+		return nil
 	case *ast.MapType:
-		key, err := c.getTypeFromASTNodeWithName(name, t.Key, opt)
-		if err != nil {
-			return nil, err
-		}
+		key := c.getTypeFromASTNodeWithName(ctx, t.Key)
 		if key == nil {
-			return nil, nil
+			return nil
 		}
-		value, err := c.getTypeFromASTNodeWithName(name, t.Value, opt)
-		if err != nil {
-			return nil, err
-		}
+		value := c.getTypeFromASTNodeWithName(ctx, t.Value)
 		if value == nil {
-			return nil, nil
+			return nil
 		}
-		return gocoder.NewType(reflect.MapOf(key.RefType(), value.RefType())), nil
+		return gocoder.NewType(reflect.MapOf(key.RefType(), value.RefType()))
 	case *ast.InterfaceType:
-		res, err := c.GetInterfaceFromASTInterfaceType(name, t, opt)
-		if err != nil {
-			return nil, err
-		}
-		return res.GetType(), nil
+		res := c.GetInterfaceFromASTInterfaceType(ctx, t)
+		return res.GetType()
 	default:
-		log.Warn("name == typeName but type unknown", log.Any("name", name), log.Any("type", reflect.TypeOf(t)))
+		log.Warn("name == typeName but type unknown", log.Any("name", ctx.GetBuildingItemName()), log.Any("type", reflect.TypeOf(t)))
 	}
-	return nil, nil
+	return nil
 }
 
-func (c *ASTCoder) GetTypeFromASTNode(st ast.Node, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
-	return c.getTypeFromASTNodeWithName("", st, opt)
+func (c *CodeDecoder) GetTypeFromASTNode(ctx DecoderContext, st ast.Node) gocoder.Type {
+	return c.getTypeFromASTNodeWithName(ctx, st)
 }
 
-func (c *ASTCoder) GetTypeFromASTIdent(st *ast.Ident, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
+func (c *CodeDecoder) GetTypeFromASTIdent(ctx DecoderContext, st *ast.Ident) gocoder.Type {
 	typeStr := st.Name
 	res := TypeStringToZeroInterface(typeStr)
 	if res == nil {
 		// not basic type
-		t, err := c.GetType(typeStr, opt)
-		if err != nil {
-			log.Warn("GetTypeFromASTIdent GetTypeFromSourceFileSet error", log.ErrorField(err), log.Any("typeStr", typeStr), log.Any("obj", st.Obj), log.Any("st", st))
-			return nil, nil
+		if ctx != nil && ctx.GetCurrentPkg() != "" {
+			typeStr = ctx.GetCurrentPkg() + "." + typeStr
 		}
+		t := c.GetType(typeStr)
 		if t != nil {
 			res = t
 		}
 	}
 	if res == nil {
-		return nil, nil
+		return nil
 	}
-	return res, nil
+	return res
 }
 
-func (c *ASTCoder) GetType(typeName string, opt *gocoder.ToCodeOption) (gocoder.Type, error) {
-	if typeName == "" {
-		return nil, nil
+func (c *CodeDecoder) GetType(fullTypeName string) gocoder.Type {
+	if fullTypeName == "" {
+		return nil
 	}
-	if c.DecodedTypes[typeName] != nil {
-		return c.DecodedTypes[typeName], nil
+	log.Debug("GetType", log.Any("fullTypeName", fullTypeName))
+	if c.DecodedTypes[fullTypeName] != nil {
+		return c.DecodedTypes[fullTypeName]
 	}
-	astTyped := &ASTTyped{
-		Type: gocoder.NewTypeName(typeName),
+	astLoadedType := &LoadedType{
+		Type: gocoder.NewTypeName(fullTypeName),
 	}
-	c.DecodedTypes[typeName] = astTyped
+	c.DecodedTypes[fullTypeName] = astLoadedType
 
 	var resType gocoder.Type
-	var resErr error
-	basicType := TypeStringToZeroInterface(typeName)
+	basicType := TypeStringToZeroInterface(fullTypeName)
 	if basicType != nil {
 		resType = basicType
-	} else {
-		typeTypeName := typeName
-		if ss := strings.Split(typeName, "."); len(ss) == 2 {
-			typeTypeName = ss[1]
+	}
+	if resType == nil {
+		typeTypeName := fullTypeName
+		typePkg := ""
+		if index := strings.LastIndex(fullTypeName, "."); index > 0 && index < len(fullTypeName)-1 {
+			typePkg = fullTypeName[:index]
+			typeTypeName = fullTypeName[index+1:]
 		}
 		for _, pkgV := range c.pkgs.List {
-			pkg, node := pkgV.Name, pkgV.Package
-			ast.Walk((walker)(func(node ast.Node) bool {
-				if node == nil {
-					return true
+			if typePkg != "" {
+				if typePkg != pkgV.Name && typePkg != pkgV.Alias {
+					continue
 				}
-				{
-					// add import
-					if ts, ok := node.(*ast.ImportSpec); ok {
-						path := strings.ReplaceAll(ts.Path.Value, "\"", "")
-						ss := strings.Split(path, "/")
-						if len(ss) > 0 {
-							c.importPkgs[ss[len(ss)-1]] = path
+			}
+			for _, astFile := range pkgV.Package.Files {
+				ast.Walk(walker(func(node ast.Node) bool {
+					if node == nil {
+						return true
+					}
+					ts, ok := node.(*ast.TypeSpec)
+					if !ok {
+						return true
+					}
+					if ts.Name.Name == typeTypeName {
+						ctx := NewDecoderContextByAstFile(pkgV.Name, typeTypeName, astFile)
+						resType = c.GetTypeFromASTNode(ctx, ts)
+						if resType != nil {
+							if resType.IsStruct() && resType.Package() == "" {
+								resType.SetPkg(pkgV.Name)
+							}
+							return false
 						}
 					}
-				}
-				ts, ok := node.(*ast.TypeSpec)
-				if !ok {
 					return true
+				}), astFile)
+				if resType != nil {
+					break
 				}
-				if ts.Name.Name == typeTypeName {
-					resType, resErr = c.GetTypeFromASTNode(ts, opt)
-					if resType != nil && resType.IsStruct() {
-						if pkgPath := opt.GetPkgPath(); pkgPath != nil && pkgInReference(*pkgPath) == pkg {
-							resType.SetPkg(*pkgPath)
-						} else {
-							resType.SetPkg(pkg)
-						}
-					}
-				}
-				return true
-			}), node)
-			if resErr != nil || resType != nil {
+			}
+			if resType != nil {
 				break
 			}
 		}
 	}
 	if resType == nil {
-		c.DecodedTypes[typeName] = nil
+		c.DecodedTypes[fullTypeName] = nil
 	} else {
-		astTyped.Type = resType
+		astLoadedType.Type = resType
 	}
-	return resType, resErr
+	return resType
 }

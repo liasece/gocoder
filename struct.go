@@ -46,6 +46,10 @@ func (t *tStruct) GetType() Type {
 	return &tType{
 		Str:    t.GetName(),
 		Struct: t,
+		Type:   nil,
+		Pkg:    "",
+		Named:  t.ReName,
+		Next:   nil,
 	}
 }
 

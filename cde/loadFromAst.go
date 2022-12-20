@@ -9,29 +9,26 @@ func TypeStringToZeroInterface(str string) gocoder.Type {
 	return ast.TypeStringToZeroInterface(str)
 }
 
-func GetTypeFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) (gocoder.Type, error) {
-	opt := gocoder.MergeToCodeOpt(opts...)
-	c, err := ast.NewASTCoder(path)
+func GetTypeFromSource(path string, typeName string) (gocoder.Type, error) {
+	c, err := ast.NewCodeDecoder(path)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetType(typeName, opt)
+	return c.GetType(typeName), nil
 }
 
-func GetInterfaceFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) (gocoder.Interface, error) {
-	opt := gocoder.MergeToCodeOpt(opts...)
-	c, err := ast.NewASTCoder(path)
+func GetInterfaceFromSource(path string, typeName string) (gocoder.Interface, error) {
+	c, err := ast.NewCodeDecoder(path)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetInterface(typeName, opt)
+	return c.GetInterface(typeName), nil
 }
 
-func GetMethodsFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) ([]gocoder.Func, error) {
-	opt := gocoder.MergeToCodeOpt(opts...)
-	c, err := ast.NewASTCoder(path)
+func GetMethodsFromSource(path string, typeName string) ([]gocoder.Func, error) {
+	c, err := ast.NewCodeDecoder(path)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetMethods(typeName, opt)
+	return c.GetMethods(typeName), nil
 }

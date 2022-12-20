@@ -1,7 +1,6 @@
 package gocoder
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -212,15 +211,26 @@ func (t *tValue) field(name string) *tValue {
 		noPtrT = noPtrT.Elem()
 	}
 	if noPtrT.Kind() != reflect.Struct {
-		panic(errors.New("value isn't struct"))
+		panic("value isn't struct")
 	}
 	f, ok := noPtrT.FieldByName(name)
 	if !ok {
-		panic(fmt.Errorf("value no target field: %s", name))
+		panic(fmt.Sprintf("value no target field: %s", name))
 	}
 	return &tValue{
-		Name:  t.Name + "." + f.Name,
-		IType: NewType(f.Type),
+		Name:         t.Name + "." + f.Name,
+		IType:        NewType(f.Type),
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -238,19 +248,29 @@ func (t *tValue) Method(name string) Value {
 		// }
 		if noPtrT.RefType() == nil {
 			return &tValue{
-				Left: t,
-				Name: name,
+				Left:         t,
+				Name:         name,
+				IType:        nil,
+				Action:       "",
+				Right:        nil,
+				IValue:       nil,
+				Str:          "",
+				Func:         nil,
+				Notes:        nil,
+				Values:       nil,
+				CallArgs:     nil,
+				CallArgTypes: nil,
+				CallReturns:  nil,
 			}
 		}
 		if f, ok := noPtrT.MethodByName(name); !ok {
-			panic(fmt.Errorf("value isn't struct, type: %s(%s) name: %s", noPtrT.String(), noPtrT.RefType().String(), name))
+			panic(fmt.Sprintf("value isn't struct, type: %s(%s) name: %s", noPtrT.String(), noPtrT.RefType().String(), name))
 		} else {
 			outTypes := make([]Type, f.Type.NumOut())
 			for i := range outTypes {
 				outTypes[i] = NewType(f.Type.Out(i))
 			}
-			var inTypes []Type
-			inTypes = make([]Type, f.Type.NumIn()-1)
+			inTypes := make([]Type, f.Type.NumIn()-1)
 			for i := range inTypes {
 				inTypes[i] = NewType(f.Type.In(i + 1))
 			}
@@ -260,19 +280,39 @@ func (t *tValue) Method(name string) Value {
 				IType:        NewType(f.Type),
 				CallReturns:  outTypes,
 				CallArgTypes: inTypes,
+				Action:       "",
+				Right:        nil,
+				IValue:       nil,
+				Str:          "",
+				Func:         nil,
+				Notes:        nil,
+				Values:       nil,
+				CallArgs:     nil,
 			}
 		}
 	}
 	return &tValue{
-		Left: t,
-		Name: name,
+		Left:         t,
+		Name:         name,
+		IType:        nil,
+		Action:       "",
+		Right:        nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) ToArg() Arg {
 	return &tArg{
-		Name: t.Name,
-		Type: t.Type(),
+		Name:           t.Name,
+		Type:           t.Type(),
+		VariableLength: false,
 	}
 }
 
@@ -295,30 +335,48 @@ func (t *tValue) Cast(i interface{}) Value {
 		}
 		if noPtrTarget.Kind() == reflect.Interface {
 			if !noPtrCurent.Implements(noPtrTarget.RefType()) {
-				panic(errors.New("can't (" + noPtrCurent.String() + ") Implements (" + noPtrTarget.String() + ")"))
+				panic("can't (" + noPtrCurent.String() + ") Implements (" + noPtrTarget.String() + ")")
 			}
 		} else if noPtrCurent.Kind() != noPtrTarget.Kind() && !noPtrCurent.IsStruct() && !noPtrTarget.IsStruct() {
 			if !noPtrCurent.ConvertibleTo(noPtrTarget.RefType()) || !noPtrTarget.ConvertibleTo(noPtrCurent.RefType()) {
-				panic(errors.New("can't (" + noPtrCurent.String() + ") ConvertibleTo (" + noPtrTarget.String() + ")"))
+				panic("can't (" + noPtrCurent.String() + ") ConvertibleTo (" + noPtrTarget.String() + ")")
 			} else {
 				midValue = &tValue{
-					Left:   target,
-					Action: ValueActionCastType,
-					Right:  midValue,
-					IType:  target,
+					Left:         target,
+					Action:       ValueActionCastType,
+					Right:        midValue,
+					IType:        target,
+					Name:         "",
+					IValue:       nil,
+					Str:          "",
+					Func:         nil,
+					Notes:        nil,
+					Values:       nil,
+					CallArgs:     nil,
+					CallArgTypes: nil,
+					CallReturns:  nil,
 				}
 			}
 		}
 		if noPtrCurent.Kind() == noPtrTarget.Kind() && noPtrCurent.String() != noPtrTarget.String() {
 			midValue = &tValue{
-				Left:   target,
-				Action: ValueActionCastType,
-				Right:  midValue,
-				IType:  target,
+				Left:         target,
+				Action:       ValueActionCastType,
+				Right:        midValue,
+				IType:        target,
+				Name:         "",
+				IValue:       nil,
+				Str:          "",
+				Func:         nil,
+				Notes:        nil,
+				Values:       nil,
+				CallArgs:     nil,
+				CallArgTypes: nil,
+				CallReturns:  nil,
 			}
 		}
 	} else {
-		panic(fmt.Errorf("Cast error %v", t.TypeString()))
+		panic(fmt.Sprintf("Cast error %v", t.TypeString()))
 	}
 	return midValue
 }
@@ -328,10 +386,19 @@ func (t *tValue) Assertion(i interface{}) Value {
 	if t.IsNilType() || target == nil || target.IsNil() {
 		if target != nil && target.String() != "" {
 			return &tValue{
-				Left:   t,
-				Action: ValueActionAssertionType,
-				Right:  t,
-				IType:  target,
+				Left:         t,
+				Action:       ValueActionAssertionType,
+				Right:        t,
+				IType:        target,
+				Name:         "",
+				IValue:       nil,
+				Str:          "",
+				Func:         nil,
+				Notes:        nil,
+				Values:       nil,
+				CallArgs:     nil,
+				CallArgTypes: nil,
+				CallReturns:  nil,
 			}
 		}
 		return t
@@ -345,18 +412,27 @@ func (t *tValue) Assertion(i interface{}) Value {
 		}
 		if noPtrCurent.Kind() == reflect.Interface {
 			if !noPtrTarget.Implements(noPtrCurent.RefType()) {
-				panic(errors.New("can't (" + noPtrTarget.String() + ") Implements (" + noPtrCurent.String() + ")"))
+				panic("can't (" + noPtrTarget.String() + ") Implements (" + noPtrCurent.String() + ")")
 			} else {
 				return &tValue{
-					Left:   t,
-					Action: ValueActionAssertionType,
-					Right:  midValue,
-					IType:  target,
+					Left:         t,
+					Action:       ValueActionAssertionType,
+					Right:        midValue,
+					IType:        target,
+					Name:         "",
+					IValue:       nil,
+					Str:          "",
+					Func:         nil,
+					Notes:        nil,
+					Values:       nil,
+					CallArgs:     nil,
+					CallArgTypes: nil,
+					CallReturns:  nil,
 				}
 			}
 		}
 	}
-	panic(fmt.Errorf("Assertion error %v to %v", t.TypeString(), target.String()))
+	panic(fmt.Sprintf("Assertion error %v to %v", t.TypeString(), target.String()))
 }
 
 func (t *tValue) Call(argsI ...interface{}) Value {
@@ -365,15 +441,15 @@ func (t *tValue) Call(argsI ...interface{}) Value {
 		if len(t.CallArgTypes) > 0 && t.CallArgTypes[len(t.CallArgTypes)-1].Kind() == reflect.Slice {
 			lastArg := t.CallArgTypes[len(t.CallArgTypes)-1].Elem()
 			if len(args) < len(t.CallArgTypes)-1 {
-				panic(fmt.Errorf("len(args)(%d)(%+v) != len(t.CallArgTypes)-1(%d)(%+v), func: %s %s", len(args), args, len(t.CallArgTypes), t.CallArgTypes, t.Type().Name(), t.Type().String()))
+				panic(fmt.Sprintf("len(args)(%d)(%+v) != len(t.CallArgTypes)-1(%d)(%+v), func: %s %s", len(args), args, len(t.CallArgTypes), t.CallArgTypes, t.Type().Name(), t.Type().String()))
 			}
 			for i := len(t.CallArgTypes) - 1; i < len(args); i++ {
 				if args[i].Type().RefType() != lastArg.RefType() && (args[i].Type().RefType() != nil && !args[i].Type().RefType().Implements(lastArg.RefType())) {
-					panic(fmt.Errorf("args[i].Type().RefType()(%v) != lastArg.RefType()(%v), func: %s %s\n %v : %v", args[i].TypeString(), lastArg.String(), t.Type().Name(), t.Type().String(), args, t.CallArgTypes))
+					panic(fmt.Sprintf("args[i].Type().RefType()(%v) != lastArg.RefType()(%v), func: %s %s\n %v : %v", args[i].TypeString(), lastArg.String(), t.Type().Name(), t.Type().String(), args, t.CallArgTypes))
 				}
 			}
 		} else if len(args) != len(t.CallArgTypes) {
-			panic(fmt.Errorf("len(args)(%d)(%+v) != len(t.CallArgTypes)(%d)(%+v), func: %s %s", len(args), args, len(t.CallArgTypes), t.CallArgTypes, t.Type().Name(), t.Type().String()))
+			panic(fmt.Sprintf("len(args)(%d)(%+v) != len(t.CallArgTypes)(%d)(%+v), func: %s %s", len(args), args, len(t.CallArgTypes), t.CallArgTypes, t.Type().Name(), t.Type().String()))
 		}
 	}
 	realArgs := args
@@ -389,11 +465,19 @@ func (t *tValue) Call(argsI ...interface{}) Value {
 		}
 	}
 	return &tValue{
-		Left:        t,
-		Action:      ValueActionFuncCall,
-		CallArgs:    realArgs,
-		IType:       t.Type(),
-		CallReturns: t.CallReturns,
+		Left:         t,
+		Action:       ValueActionFuncCall,
+		CallArgs:     realArgs,
+		IType:        t.Type(),
+		CallReturns:  t.CallReturns,
+		Name:         "",
+		Right:        nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgTypes: nil,
 	}
 }
 
@@ -491,10 +575,19 @@ func (t *tValue) Set(i interface{}, opts ...*SetOption) Value {
 		right = right.Cast(t.Type())
 	}
 	return &tValue{
-		Left:   t,
-		Action: ValueActionSet,
-		Right:  right,
-		IType:  t.Type(),
+		Left:         t,
+		Action:       ValueActionSet,
+		Right:        right,
+		IType:        t.Type(),
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -504,10 +597,19 @@ func (t *tValue) Dot(name string) Value {
 		panic("Value Dot FieldByName " + name + " not ok")
 	}
 	return &tValue{
-		Left:   t,
-		Action: ValueActionDot,
-		Name:   name,
-		IType:  field,
+		Left:         t,
+		Action:       ValueActionDot,
+		Name:         name,
+		IType:        field,
+		Right:        nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -522,10 +624,19 @@ func (t *tValue) AutoSet(i interface{}, opts ...*SetOption) Value {
 		t.IType = right.Type()
 	}
 	return &tValue{
-		Left:   t,
-		Action: ValueActionAutoSet,
-		Right:  right,
-		IType:  right.Type(),
+		Left:         t,
+		Action:       ValueActionAutoSet,
+		Right:        right,
+		IType:        right.Type(),
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -533,16 +644,25 @@ func (t *tValue) Index(i interface{}) Value {
 	v := MustToValue("", i)
 	left := t.UnPtr()
 	return &tValue{
-		Left:   left,
-		Action: ValueActionIndex,
-		Right:  v,
-		IType:  left.Type().Elem(),
+		Left:         left,
+		Action:       ValueActionIndex,
+		Right:        v,
+		IType:        left.Type().Elem(),
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) Check() Value {
 	if t.Type() == nil || t.Type().IsNil() {
-		panic(fmt.Errorf("tValue %+v type can't be nil", t))
+		panic(fmt.Sprintf("tValue %+v type can't be nil", t))
 	}
 	return t
 }
@@ -558,115 +678,246 @@ func (t *tValue) Returns() []Value {
 func (t *tValue) Add(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionAdd,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionAdd,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) Sub(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionSub,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionSub,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) Mul(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionMul,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionMul,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) Div(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionDiv,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionDiv,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) Equal(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionEqual,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionEqual,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) GT(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionGT,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionGT,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) LT(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionLT,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionLT,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) GE(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionGE,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionGE,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) LE(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionLE,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionLE,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) NE(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionNE,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionNE,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) Not() Value {
 	return &tValue{
-		Action: ValueActionNot,
-		Right:  t,
+		Action:       ValueActionNot,
+		Right:        t,
+		IType:        nil,
+		Name:         "",
+		Left:         nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) Or(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionOr,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionOr,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 func (t *tValue) And(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
-		Left:   t,
-		Action: ValueActionAnd,
-		Right:  v,
+		Left:         t,
+		Action:       ValueActionAnd,
+		Right:        v,
+		IType:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -677,9 +928,19 @@ func (t *tValue) UnPtr() Value {
 		}
 	}
 	return &tValue{
-		Action: ValueActionUnPtr,
-		Right:  t,
-		IType:  t.Type().Elem(),
+		Action:       ValueActionUnPtr,
+		Right:        t,
+		IType:        t.Type().Elem(),
+		Name:         "",
+		Left:         nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -690,9 +951,19 @@ func (t *tValue) TakePtr() Value {
 		}
 	}
 	return &tValue{
-		Action: ValueActionTakePtr,
-		Right:  t,
-		IType:  t.Type().TackPtr(),
+		Action:       ValueActionTakePtr,
+		Right:        t,
+		IType:        t.Type().TackPtr(),
+		Name:         "",
+		Left:         nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 

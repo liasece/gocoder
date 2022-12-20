@@ -9,60 +9,59 @@ import (
 	"github.com/liasece/log"
 )
 
-func (c *ASTCoder) GetInterfaceFromASTInterfaceType(name string, st *ast.InterfaceType, opt *gocoder.ToCodeOption) (gocoder.Interface, error) {
-	fs, err := c.GetFuncsFromASTFieldList(nil, st.Methods, opt)
-	if err != nil {
-		return nil, err
-	}
-	res := gocoder.NewInterface(name, fs)
-	return res, nil
+func (c *CodeDecoder) GetInterfaceFromASTInterfaceType(ctx DecoderContext, st *ast.InterfaceType) gocoder.Interface {
+	fs := c.GetFuncsFromASTFieldList(ctx, nil, st.Methods)
+	res := gocoder.NewInterface(ctx.GetBuildingItemName(), fs)
+	return res
 }
 
-func (c *ASTCoder) GetInterface(name string, opt *gocoder.ToCodeOption) (gocoder.Interface, error) {
+func (c *CodeDecoder) GetInterface(name string) gocoder.Interface {
 	var resType gocoder.Interface
-	var resErr error
 	typeTypeName := name
-	// typePkgName := ""
-	if ss := strings.Split(name, "."); len(ss) == 2 {
-		// typePkgName = ss[0]
-		typeTypeName = ss[1]
+	typePkg := ""
+	if index := strings.LastIndex(name, "."); index > 0 && index < len(name)-1 {
+		typePkg = name[:index]
+		typeTypeName = name[index+1:]
 	}
 	for _, pkgV := range c.pkgs.List {
-		node := pkgV.Package
-		ast.Walk((walker)(func(node ast.Node) bool {
-			if node == nil {
-				return true
+		if typePkg != "" {
+			if typePkg != pkgV.Name && typePkg != pkgV.Alias {
+				continue
 			}
-			{
-				// add import
-				if ts, ok := node.(*ast.ImportSpec); ok {
-					path := strings.ReplaceAll(ts.Path.Value, "\"", "")
-					ss := strings.Split(path, "/")
-					if len(ss) > 0 {
-						c.importPkgs[ss[len(ss)-1]] = path
+		}
+		for _, astFile := range pkgV.Package.Files {
+			ast.Walk((walker)(func(node ast.Node) bool {
+				if node == nil {
+					return true
+				}
+				ts, ok := node.(*ast.TypeSpec)
+				if !ok {
+					return true
+				}
+				if ts.Name.Name == typeTypeName {
+					// found target type
+					if st, ok := ts.Type.(*ast.InterfaceType); ok {
+						ctx := NewDecoderContextByAstFile(pkgV.Name, typeTypeName, astFile)
+						resType = c.GetInterfaceFromASTInterfaceType(ctx, st)
+						if resType != nil {
+							return false
+						}
+					} else {
+						log.Error("GetInterface ts.Name.Name == name but type unknown", log.Any("type", reflect.TypeOf(ts.Type)))
 					}
 				}
-			}
-			ts, ok := node.(*ast.TypeSpec)
-			if !ok {
 				return true
+			}), astFile)
+			if resType != nil {
+				break
 			}
-			if ts.Name.Name == typeTypeName {
-				// found target type
-				if st, ok := ts.Type.(*ast.InterfaceType); ok {
-					resType, resErr = c.GetInterfaceFromASTInterfaceType(ts.Name.Name, st, opt)
-					return false
-				}
-				log.Error("GetInterface ts.Name.Name == name but type unknown", log.Any("type", reflect.TypeOf(ts.Type)))
-			}
-			return true
-		}), node)
-		if resErr != nil || resType != nil {
+		}
+		if resType != nil {
 			break
 		}
 	}
 	if resType == nil {
 		log.Warn("GetInterface not found type", log.Any("name", name), log.Any("typeTypeName", typeTypeName))
 	}
-	return resType, resErr
+	return resType
 }

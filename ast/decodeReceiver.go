@@ -6,14 +6,11 @@ import (
 	"github.com/liasece/gocoder"
 )
 
-func (c *ASTCoder) GetReceiverFromASTField(st *ast.Field, opt *gocoder.ToCodeOption) (gocoder.Receiver, error) {
+func (c *CodeDecoder) GetReceiverFromASTField(ctx DecoderContext, st *ast.Field) gocoder.Receiver {
 	var name string
 	if len(st.Names) > 0 {
 		name = st.Names[0].Name
 	}
-	t, err := c.getTypeFromASTNodeWithName(name, st.Type, opt)
-	if err != nil {
-		return nil, err
-	}
-	return gocoder.NewReceiver(name, t), nil
+	t := c.getTypeFromASTNodeWithName(ctx, st.Type)
+	return gocoder.NewReceiver(name, t)
 }

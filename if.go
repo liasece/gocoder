@@ -51,6 +51,9 @@ func (t *tIf) WriteCode(w Writer) {
 func (t *tIf) Else(codes ...Codable) Else {
 	t.Tail().Append(&tIf{
 		Codes: codes,
+		IfV:   nil,
+		IPre:  nil,
+		INext: nil,
 	})
 	return &tElse{
 		tIf: t,
@@ -71,6 +74,8 @@ func (t *tIf) ElseIf(i interface{}, codes ...Codable) ElseIf {
 	t.Tail().Append(&tIf{
 		IfV:   v,
 		Codes: codes,
+		IPre:  nil,
+		INext: nil,
 	})
 	return &tElseIf{
 		tIf: t,

@@ -14,11 +14,11 @@ func Make(typI interface{}, argsI ...interface{}) gocoder.Value {
 	if typ.RefType() != nil {
 		typ = typ.UnPtr()
 		if typ.Kind() == reflect.Map && len(args) == 2 {
-			panic(fmt.Errorf("make map func args must < 2"))
+			panic("make map func args must < 2")
 		}
 	}
 	if len(args) > 2 {
-		panic(fmt.Errorf("make func args must < 2"))
+		panic("make func args must < 2")
 	}
 	args = append([]gocoder.Value{gocoder.NewOnlyTypeValue(typ)}, args...)
 	return gocoder.NewValue("make", typ).Call(args)
@@ -31,7 +31,7 @@ func Len(arg gocoder.Value) gocoder.Value {
 
 // ForRange func
 func ForRange(autoSet bool, toValues gocoder.Value, value gocoder.Value, cs ...gocoder.Codable) gocoder.ForRange {
-	return gocoder.NewForRange(autoSet, gocoder.FuncTypeDefault, toValues, value)
+	return gocoder.NewForRange(autoSet, gocoder.FuncTypeDefault, toValues, value, cs...)
 }
 
 // NoteLine func

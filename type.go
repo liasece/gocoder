@@ -119,7 +119,7 @@ func init() {
 	type T struct {
 		A interface{}
 	}
-	InterfaceType = reflect.ValueOf(T{}).Field(0).Type()
+	InterfaceType = reflect.ValueOf(T{A: nil}).Field(0).Type()
 }
 
 func (t *tType) RefType() reflect.Type {
@@ -128,12 +128,19 @@ func (t *tType) RefType() reflect.Type {
 	}
 	if t.Struct != nil {
 		fields := make([]reflect.StructField, 0, len(t.Struct.GetFields()))
+		sizeOffset := uintptr(0)
 		for _, v := range t.Struct.GetFields() {
+			typ := v.GetType().RefType()
 			fields = append(fields, reflect.StructField{
-				Name: v.GetName(),
-				Type: v.GetType().RefType(),
-				Tag:  reflect.StructTag(v.GetTag()),
+				Name:      v.GetName(),
+				Type:      typ,
+				Tag:       reflect.StructTag(v.GetTag()),
+				PkgPath:   t.Pkg,
+				Offset:    sizeOffset,
+				Index:     nil,
+				Anonymous: false,
 			})
+			sizeOffset += typ.Size()
 		}
 		return reflect.StructOf(fields)
 	}
@@ -149,6 +156,9 @@ func (t *tType) UnPtr() Type {
 			Type:   t.Type.Elem(),
 			Struct: t.Struct,
 			Pkg:    t.Pkg,
+			Str:    "",
+			Named:  "",
+			Next:   nil,
 		}
 	}
 	return t
@@ -161,6 +171,9 @@ func (t *tType) TackPtr() Type {
 				Str:    "*",
 				Struct: t.Struct,
 				Next:   t,
+				Type:   nil,
+				Pkg:    "",
+				Named:  "",
 				// Pkg:    t.Pkg,
 			}
 		}
@@ -172,6 +185,8 @@ func (t *tType) TackPtr() Type {
 			Str:    t.Str,
 			Struct: t.Struct,
 			Pkg:    t.Pkg,
+			Next:   nil,
+			Named:  "",
 		}
 	}
 	return t
@@ -183,6 +198,9 @@ func (t *tType) Slice() Type {
 			Str:    "[]",
 			Struct: t.Struct,
 			Next:   t,
+			Type:   nil,
+			Pkg:    "",
+			Named:  "",
 			// Pkg:    t.Pkg,
 		}
 	}
@@ -195,6 +213,9 @@ func (t *tType) Slice() Type {
 			Type:   reflect.SliceOf(t.Type),
 			Struct: t.Struct,
 			Str:    str,
+			Pkg:    "",
+			Named:  "",
+			Next:   nil,
 		}
 	}
 	return t
@@ -214,7 +235,13 @@ func (t *tType) Elem() Type {
 }
 
 func (t *tType) Package() string {
-	return t.Pkg
+	if t.Pkg != "" {
+		return t.Pkg
+	}
+	if t.Type != nil {
+		return t.Type.PkgPath()
+	}
+	return ""
 }
 
 func (t *tType) PackageInReference() string {
@@ -257,7 +284,7 @@ func (t *tType) String() string {
 	if t.Str != "" {
 		res = t.Str
 		if t.Next != nil {
-			res = res + t.Next.String()
+			res += t.Next.String()
 		}
 	}
 	if t.Type != nil {
@@ -285,7 +312,7 @@ func (t *tType) ShowString() string {
 	if t.Str != "" {
 		res := head + t.Str
 		if t.Next != nil {
-			res = res + t.Next.ShowString()
+			res += t.Next.ShowString()
 		}
 		return res
 	}
@@ -299,7 +326,7 @@ func (t *tType) ShowString() string {
 
 	res := head + t.Named
 	if t.Next != nil {
-		res = res + t.Next.ShowString()
+		res += t.Next.ShowString()
 	}
 	return res
 }
@@ -402,6 +429,9 @@ func (t *tType) GetNext() Type {
 			Type:   t.Type.Elem(),
 			Struct: t.Struct,
 			Pkg:    t.Pkg,
+			Str:    "",
+			Named:  "",
+			Next:   nil,
 		}
 	}
 	return nil
@@ -418,8 +448,19 @@ func (t *tType) SetPkg(v string) {
 
 func (t *tType) Zero() Value {
 	return &tValue{
-		IType:  t,
-		Action: ValueActionZero,
+		IType:        t,
+		Action:       ValueActionZero,
+		Left:         nil,
+		Right:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 

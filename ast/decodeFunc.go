@@ -6,33 +6,28 @@ import (
 	"github.com/liasece/gocoder"
 )
 
-func (c *ASTCoder) GetFuncsFromASTFieldList(receiver gocoder.Receiver, st *ast.FieldList, opt *gocoder.ToCodeOption) ([]gocoder.Func, error) {
+func (c *CodeDecoder) GetFuncsFromASTFieldList(ctx DecoderContext, receiver gocoder.Receiver, st *ast.FieldList) []gocoder.Func {
 	fs := make([]gocoder.Func, 0)
 	for _, arg := range st.List {
-		f, err := c.GetFuncsFromASTField(receiver, arg, opt)
-		if err != nil {
-			// return nil, err
-		} else {
+		f := c.GetFuncFromASTField(ctx, receiver, arg)
+		if f != nil {
 			fs = append(fs, f)
 		}
 	}
-	return fs, nil
+	return fs
 }
 
-func (c *ASTCoder) GetFuncsFromASTFuncDecl(st *ast.FuncDecl, opt *gocoder.ToCodeOption) (gocoder.Func, error) {
+func (c *CodeDecoder) GetFuncsFromASTFuncDecl(ctx DecoderContext, st *ast.FuncDecl) gocoder.Func {
 	var name string
 	{
 		// get name
 		name = st.Name.Name
 	}
-	receiver, err := c.GetReceiverFromASTField(st.Recv.List[0], opt)
-	if err != nil {
-		return nil, err
-	}
-	return c.GetFuncsFromASTFuncType(receiver, name, st.Type, opt)
+	receiver := c.GetReceiverFromASTField(ctx, st.Recv.List[0])
+	return c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type)
 }
 
-func (c *ASTCoder) GetFuncsFromASTField(receiver gocoder.Receiver, st *ast.Field, opt *gocoder.ToCodeOption) (gocoder.Func, error) {
+func (c *CodeDecoder) GetFuncFromASTField(ctx DecoderContext, receiver gocoder.Receiver, st *ast.Field) gocoder.Func {
 	var name string
 	{
 		// get name
@@ -40,19 +35,16 @@ func (c *ASTCoder) GetFuncsFromASTField(receiver gocoder.Receiver, st *ast.Field
 			name = st.Names[0].Name
 		}
 	}
-	return c.GetFuncsFromASTFuncType(receiver, name, st.Type.(*ast.FuncType), opt)
+	return c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type.(*ast.FuncType))
 }
 
-func (c *ASTCoder) GetFuncsFromASTFuncType(receiver gocoder.Receiver, name string, se *ast.FuncType, opt *gocoder.ToCodeOption) (gocoder.Func, error) {
+func (c *CodeDecoder) GetFuncsFromASTFuncType(ctx DecoderContext, receiver gocoder.Receiver, name string, se *ast.FuncType) gocoder.Func {
 	var args []gocoder.Arg
 	var returns []gocoder.Type
 
 	if se.Params != nil {
 		for _, arg := range se.Params.List {
-			argType, err := c.GetTypeFromASTNode(arg.Type, opt)
-			if err != nil {
-				return nil, err
-			}
+			argType := c.GetTypeFromASTNode(ctx, arg.Type)
 			for _, argName := range arg.Names {
 				args = append(args, gocoder.NewArg(argName.Name, argType, false))
 			}
@@ -60,13 +52,10 @@ func (c *ASTCoder) GetFuncsFromASTFuncType(receiver gocoder.Receiver, name strin
 	}
 	if se.Results != nil {
 		for _, arg := range se.Results.List {
-			argType, err := c.GetTypeFromASTNode(arg.Type, opt)
-			if err != nil {
-				return nil, err
-			}
+			argType := c.GetTypeFromASTNode(ctx, arg.Type)
 			returns = append(returns, argType)
 		}
 	}
 
-	return gocoder.NewFunc(gocoder.FuncTypeDefault, name, receiver, args, returns), nil
+	return gocoder.NewFunc(gocoder.FuncTypeDefault, name, receiver, args, returns)
 }

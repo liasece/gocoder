@@ -29,9 +29,9 @@ func GetGoFileFullPackage(filePath string) (pkg string, alias string) {
 		return "", ""
 	}
 
-	moduleName := GetGoModModuleName(filepath.Dir(filePath))
+	moduleName := GetDirGoPackage(filepath.Dir(filePath))
 	if moduleName == "" {
-		return f.Name.Name, ""
+		return f.Name.Name, f.Name.Name
 	}
 	return moduleName, f.Name.Name
 }
@@ -61,7 +61,8 @@ func getGoModModuleName(path string) (string, error) {
 	return module, nil
 }
 
-func GetGoModModuleName(path string) string {
+// get a dir's package name, like "github.com/liasece/gocoder/ast".
+func GetDirGoPackage(path string) string {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return ""
@@ -78,7 +79,9 @@ func Parse(fset *token.FileSet, path string, filter func(fs.FileInfo) bool, mode
 	if err != nil {
 		return nil, err
 	}
-	pkgs = &Packages{}
+	pkgs = &Packages{
+		List: nil,
+	}
 	if info.IsDir() {
 		{
 			// this package
@@ -120,7 +123,9 @@ func Parse(fset *token.FileSet, path string, filter func(fs.FileInfo) bool, mode
 		if src, err := parser.ParseFile(fset, path, nil, mode); err == nil {
 			name := src.Name.Name
 			pkg := &ast.Package{
-				Name: name,
+				Name:    name,
+				Scope:   nil,
+				Imports: nil,
 				Files: map[string]*ast.File{
 					path: src,
 				},
@@ -136,5 +141,5 @@ func Parse(fset *token.FileSet, path string, filter func(fs.FileInfo) bool, mode
 		}
 	}
 
-	return
+	return pkgs, nil
 }

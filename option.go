@@ -7,7 +7,9 @@ type SetOption struct {
 
 // NewSetOpt func
 func NewSetOpt() *SetOption {
-	return &SetOption{}
+	return &SetOption{
+		notCast: nil,
+	}
 }
 
 // Cast func
@@ -19,7 +21,9 @@ func (o *SetOption) Cast(v bool) *SetOption {
 
 // MergeSetOpt func
 func MergeSetOpt(opts ...*SetOption) *SetOption {
-	res := &SetOption{}
+	res := &SetOption{
+		notCast: nil,
+	}
 	for _, opt := range opts {
 		if opt == nil {
 			continue
@@ -41,7 +45,8 @@ type ToCodeOption struct {
 
 // NewToCodeOpt func
 func NewToCodeOpt() *ToCodeOption {
-	return &ToCodeOption{}
+	var res ToCodeOption
+	return &res
 }
 
 // PkgTool func
@@ -73,7 +78,7 @@ func (o *ToCodeOption) NoPretty(v bool) *ToCodeOption {
 
 // MergeToCodeOpt func
 func MergeToCodeOpt(opts ...*ToCodeOption) *ToCodeOption {
-	res := &ToCodeOption{}
+	var res ToCodeOption
 	for _, opt := range opts {
 		if opt == nil {
 			continue
@@ -91,5 +96,5 @@ func MergeToCodeOpt(opts ...*ToCodeOption) *ToCodeOption {
 			res.noPretty = opt.noPretty
 		}
 	}
-	return res
+	return &res
 }

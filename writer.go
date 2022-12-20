@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -20,7 +19,7 @@ import (
 // PkgTool interface
 type PkgTool interface {
 	PkgAlias(pkgPath string) string
-	SetPkgAlias(pkgPath string, alias string) error
+	SetPkgAlias(pkgPath string, alias string)
 	PkgAliasMap() map[string]string
 }
 
@@ -76,15 +75,19 @@ func ToCode(c Codable, opts ...*ToCodeOption) string {
 		toPkg = *opt.pkgPath
 	}
 	w := &tWriter{
-		out:     &bytes.Buffer{},
-		pkgTool: pkgTool,
-		toPkg:   toPkg,
+		out:        &bytes.Buffer{},
+		pkgTool:    pkgTool,
+		toPkg:      toPkg,
+		indent:     0,
+		notHead:    false,
+		needIndent: false,
+		inline:     false,
 	}
 	c.WriteCode(w)
 	return w.out.String()
 }
 
-func GetImports(pkgTool PkgTool, skip []string) ([]string, error) {
+func GetImports(pkgTool PkgTool, skip []string) []string {
 	m := pkgTool.PkgAliasMap()
 	res := make([]string, 0)
 	if len(m) > 0 {
@@ -115,7 +118,7 @@ func GetImports(pkgTool PkgTool, skip []string) ([]string, error) {
 			}
 		}
 	}
-	return res, nil
+	return res
 }
 
 type ImportPkgStrSort []string
@@ -140,17 +143,11 @@ func isInnerPkg(s string) bool {
 }
 
 func isExternalPkg(s string) bool {
-	if strings.Count(s, ".") != 0 {
-		return true
-	}
-	return false
+	return strings.Count(s, ".") != 0
 }
 
-func GetImportStr(pkgTool PkgTool, skip []string) (string, error) {
-	imports, err := GetImports(pkgTool, skip)
-	if err != nil {
-		return "", err
-	}
+func GetImportStr(pkgTool PkgTool, skip []string) string {
+	imports := GetImports(pkgTool, skip)
 	sort.Sort(ImportPkgStrSort(imports))
 	if len(imports) > 0 {
 		strs := ""
@@ -160,9 +157,9 @@ func GetImportStr(pkgTool PkgTool, skip []string) (string, error) {
 				strs += "\n"
 			}
 		}
-		return fmt.Sprintf("import (\n%s\n)", strs), nil
+		return fmt.Sprintf("import (\n%s\n)", strs)
 	}
-	return "", nil
+	return ""
 }
 
 func WriteToFileStr(c Codable, opts ...*ToCodeOption) (string, error) {
@@ -196,22 +193,19 @@ func Write(w io.Writer, c Codable, opts ...*ToCodeOption) error {
 
 	codeStr := ToCode(c, opt)
 
-	importStr, err := GetImportStr(opt.pkgTool, []string{pkgName})
-	if err != nil {
-		return err
-	}
+	importStr := GetImportStr(opt.pkgTool, []string{pkgName})
 	if len(importStr) > 0 {
-		_, err = fmt.Fprintf(w, "\n%s\n", importStr)
+		_, err := fmt.Fprintf(w, "\n%s\n", importStr)
 		if err != nil {
 			return err
 		}
 	}
-
-	_, err = w.Write([]byte(codeStr))
-	if err != nil {
-		return err
+	{
+		_, err := w.Write([]byte(codeStr))
+		if err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
@@ -233,17 +227,24 @@ func WriteToFile(filename string, c Codable, opts ...*ToCodeOption) error {
 	}
 	// log.L(nil).Error("test", log.Any("filename", filename), log.Any("str", str))
 	bytes := []byte(str)
-	if opt.noPretty == nil || *opt.noPretty == false {
-		bytes, err = imports.Process(filename, bytes, &imports.Options{FormatOnly: true, Comments: true, TabIndent: true, TabWidth: 8})
+	if opt.noPretty == nil || !*opt.noPretty {
+		bytes, err = imports.Process(filename, bytes, &imports.Options{
+			FormatOnly: true,
+			Comments:   true,
+			TabIndent:  true,
+			TabWidth:   8,
+			Fragment:   false,
+			AllErrors:  false,
+		})
 		if err != nil {
-			err1 := ioutil.WriteFile(filename, []byte(str), 0644)
+			err1 := os.WriteFile(filename, []byte(str), 0600)
 			if err1 != nil {
 				return errors.Wrapf(err1, "failed to write %s", filename)
 			}
 			return err
 		}
 	}
-	err = ioutil.WriteFile(filename, bytes, 0644)
+	err = os.WriteFile(filename, bytes, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write %s", filename)
 	}
@@ -320,7 +321,7 @@ func (w *tWriter) WriteCode(c Codable) {
 	case Code:
 		w.CodeToCode(t)
 	default:
-		panic(fmt.Errorf("WriteCode unknown type: %+v", c))
+		panic(fmt.Sprintf("WriteCode unknown type: %+v", c))
 	}
 }
 
@@ -375,7 +376,7 @@ func (w *tWriter) ValueToCode(t Value) {
 		case t.Type() != nil:
 			w.Add(t.Type())
 		default:
-			panic(fmt.Errorf("unknown value: %+v", t))
+			panic(fmt.Sprintf("unknown value: %+v", t))
 		}
 	case ValueActionZero:
 		w.Add(getZeroValueCode(t.Type(), w.pkgTool))
@@ -537,6 +538,7 @@ func (w *tWriter) IfToCode(t BaseIf) {
 func (w *tWriter) NoteToCode(t Note) {
 	if t.GetContent() != "" {
 		switch t.GetKind() {
+		case NoteKindNone:
 		case NoteKindLine:
 			if !w.IsHead() {
 				w.AddStr(" ")
@@ -624,12 +626,12 @@ func (w *tWriter) Line(is ...interface{}) {
 
 // Add func
 func (w *tWriter) Add(is ...interface{}) {
-	w.add(true, is...)
+	w.add(is...)
 }
 
 // AddCompact func
 func (w *tWriter) AddCompact(is ...interface{}) {
-	w.add(false, is...)
+	w.add(is...)
 }
 
 // IsNil check interface is nil, like IsNil((*int)(nil)) == true
@@ -645,7 +647,7 @@ func IsNil(i interface{}) bool {
 }
 
 // Add func
-func (w *tWriter) add(interval bool, is ...interface{}) {
+func (w *tWriter) add(is ...interface{}) {
 	for _, i := range is {
 		if IsNil(i) {
 			continue

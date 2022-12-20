@@ -14,7 +14,7 @@ func typeStrIter(refType reflect.Type, path string, tool PkgTool) string {
 	if refType == nil {
 		return ""
 	}
-	if refType != nil && refType.PkgPath() != "" {
+	if refType.PkgPath() != "" {
 		return path + tool.PkgAlias(refType.PkgPath()) + "." + refType.Name()
 	}
 	switch refType.Kind() {
@@ -24,8 +24,9 @@ func typeStrIter(refType reflect.Type, path string, tool PkgTool) string {
 		return typeStrIter(refType.Elem(), path+"[]", tool)
 	case reflect.Map:
 		return typeStrIter(refType.Elem(), path+"map["+typeStrIter(refType.Key(), "", tool)+"]", tool)
+	default:
+		return refType.String()
 	}
-	return refType.String()
 }
 
 func typeStringOut(t Type, tool PkgTool, toPkg string) string {

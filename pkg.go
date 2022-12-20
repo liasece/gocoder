@@ -22,9 +22,8 @@ func (m *tPkgTool) PkgAlias(pkgPath string) string {
 	return m.pkgAlias(pkgPath)
 }
 
-func (m *tPkgTool) SetPkgAlias(pkgPath string, alias string) error {
+func (m *tPkgTool) SetPkgAlias(pkgPath string, alias string) {
 	m.imports[pkgPath] = alias
-	return nil
 }
 
 func (m *tPkgTool) PkgAliasMap() map[string]string {

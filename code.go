@@ -36,19 +36,19 @@ func MustToNote(kind NoteKind, i interface{}) Note {
 
 // MustToType func
 func MustToType(i interface{}) Type {
-	if i, ok := i.(Type); ok {
+	switch i := i.(type) {
+	case Type:
 		return i
-	}
-	if i, ok := i.(Value); ok {
+	case Value:
 		if it := i.GetIType(); it != nil && !it.IsNil() {
 			return it
 		}
 		return i.Type()
-	}
-	if i, ok := i.(reflect.Type); ok {
+	case reflect.Type:
 		return NewType(i)
+	default:
+		return NewTypeI(i)
 	}
-	return NewTypeI(i)
 }
 
 // MustToValueList func
@@ -152,6 +152,7 @@ func NewPtrChecker(ifNotNil bool, checkerValue ...Value) PtrChecker {
 	return &tPtrChecker{
 		CheckerValue: checkerValue,
 		IfNotNil:     ifNotNil,
+		Handlers:     nil,
 	}
 }
 
@@ -166,8 +167,19 @@ func NewNote(content string, kind NoteKind) Note {
 // NewValue func
 func NewValue(name string, t Type) Value {
 	return &tValue{
-		Name:  name,
-		IType: t,
+		Name:         name,
+		IType:        t,
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -178,45 +190,110 @@ func NewValueFunc(name string, typ Type, argTypes []Type, returns []Type) Value 
 		IType:        typ,
 		CallArgTypes: argTypes,
 		CallReturns:  returns,
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
 	}
 }
 
 // NewValueNameI func
 func NewValueNameI(name string, i interface{}) Value {
 	return &tValue{
-		Name:   name,
-		IType:  NewType(reflect.TypeOf(i)),
-		IValue: i,
+		Name:         name,
+		IType:        NewType(reflect.TypeOf(i)),
+		IValue:       i,
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 // NewOnlyTypeValue func
 func NewOnlyTypeValue(t Type) Value {
 	return &tValue{
-		IType: t,
+		IType:        t,
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 // NewValues func
 func NewValues(vs ...Value) Value {
 	return &tValue{
-		Values: vs,
+		Values:       vs,
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		IType:        nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 // NewValueNameRef func
 func NewValueNameRef(name string, t reflect.Type) Value {
 	return &tValue{
-		Name:  name,
-		IType: NewType(t),
+		Name:         name,
+		IType:        NewType(t),
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		IValue:       nil,
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
 // NewValueI func
 func NewValueI(i interface{}) Value {
 	return &tValue{
-		IType:  NewType(reflect.TypeOf(i)),
-		IValue: i,
+		IType:        NewType(reflect.TypeOf(i)),
+		IValue:       i,
+		Left:         nil,
+		Action:       "",
+		Right:        nil,
+		Name:         "",
+		Str:          "",
+		Func:         nil,
+		Notes:        nil,
+		Values:       nil,
+		CallArgs:     nil,
+		CallArgTypes: nil,
+		CallReturns:  nil,
 	}
 }
 
@@ -233,22 +310,36 @@ func NewValueNone() Value {
 // NewTypeI func
 func NewTypeI(i interface{}) Type {
 	return &tType{
-		Type: reflect.TypeOf(i),
+		Type:   reflect.TypeOf(i),
+		Str:    "",
+		Pkg:    "",
+		Struct: nil,
+		Named:  "",
+		Next:   nil,
 	}
 }
 
 // NewTypeName func
 func NewTypeName(name string) Type {
 	return &tType{
-		Str: name,
+		Str:    name,
+		Type:   nil,
+		Pkg:    "",
+		Struct: nil,
+		Named:  "",
+		Next:   nil,
 	}
 }
 
 // NewTypeDetail func
 func NewTypeDetail(pkg string, name string) Type {
 	return &tType{
-		Str: name,
-		Pkg: pkg,
+		Str:    name,
+		Pkg:    pkg,
+		Type:   nil,
+		Struct: nil,
+		Named:  "",
+		Next:   nil,
 	}
 }
 
@@ -257,14 +348,17 @@ func NewIf(v Value, cs ...Codable) If {
 	return &tIf{
 		IfV:   v,
 		Codes: cs,
+		IPre:  nil,
+		INext: nil,
 	}
 }
 
 // NewArgI func
 func NewArgI(name string, i interface{}) Arg {
 	return &tArg{
-		Name: name,
-		Type: NewTypeI(i),
+		Name:           name,
+		Type:           NewTypeI(i),
+		VariableLength: false,
 	}
 }
 
@@ -294,6 +388,7 @@ func NewFunc(typ FuncType, name string, receiver Receiver, args []Arg, returns [
 		Args:     args,
 		Returns:  returns,
 		Notes:    notes,
+		Codes:    nil,
 	}
 }
 
@@ -325,7 +420,12 @@ func NewField(name string, typ Type, tag string) Field {
 // NewType func
 func NewType(t reflect.Type) Type {
 	return &tType{
-		Type: t,
+		Type:   t,
+		Str:    "",
+		Pkg:    "",
+		Struct: nil,
+		Named:  "",
+		Next:   nil,
 	}
 }
 
@@ -338,7 +438,9 @@ func NewReturn(v Value) Return {
 
 // NewCode func
 func NewCode() Code {
-	return &tCode{}
+	return &tCode{
+		Codes: nil,
+	}
 }
 
 // code type

@@ -8,7 +8,7 @@ import (
 	"github.com/liasece/log"
 )
 
-func (c *ASTCoder) GetStructFieldFromASTStruct(st *ast.StructType, opt *gocoder.ToCodeOption) ([]gocoder.Field, error) {
+func (c *CodeDecoder) GetStructFieldFromASTStruct(ctx DecoderContext, st *ast.StructType) []gocoder.Field {
 	fields := make([]gocoder.Field, 0)
 	for _, astField := range st.Fields.List {
 		name := ""
@@ -17,24 +17,20 @@ func (c *ASTCoder) GetStructFieldFromASTStruct(st *ast.StructType, opt *gocoder.
 		}
 		astType := astField.Type
 
-		typ, err := c.getTypeFromASTNodeWithName("", astType, opt)
-		if err != nil {
-			log.Error("GetTypeFromASTStructFields GetTypeFromSourceFileSet error", log.Any("astType", astType), log.ErrorField(err))
-			return nil, err
-		}
+		typ := c.getTypeFromASTNodeWithName(ctx, astType)
 		if typ == nil {
 			log.Debug("GetStructFieldFromASTStruct not found type", log.Any("astType", astType), log.Any("st", st))
 			continue
 		}
-		if typ != nil {
-			if name == "" {
-				// 匿名成员结构体
-				for i := 0; i < typ.NumField(); i++ {
-					fields = append(fields, typ.Field(i))
-				}
-				continue
+
+		if name == "" {
+			// 匿名成员结构体
+			for i := 0; i < typ.NumField(); i++ {
+				fields = append(fields, typ.Field(i))
 			}
+			continue
 		}
+
 		if !('a' <= name[0] && name[0] <= 'z' || name[0] == '_') {
 			var tag string
 			if astField.Tag != nil {
@@ -45,5 +41,5 @@ func (c *ASTCoder) GetStructFieldFromASTStruct(st *ast.StructType, opt *gocoder.
 			log.Info("skip type", log.Any("name", name), log.Any("astType", astType), log.Any("st", st))
 		}
 	}
-	return fields, nil
+	return fields
 }

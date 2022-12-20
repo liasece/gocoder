@@ -93,11 +93,19 @@ func (t *tFunc) Call(argsI ...interface{}) Value {
 		retType = t.Returns[0]
 	}
 	return &tValue{
-		Action:      ValueActionFuncCall,
-		IType:       retType,
-		CallReturns: t.Returns,
-		CallArgs:    args,
-		Func:        t,
+		Action:       ValueActionFuncCall,
+		IType:        retType,
+		CallReturns:  t.Returns,
+		CallArgs:     args,
+		Func:         t,
+		Left:         nil,
+		Right:        nil,
+		Name:         "",
+		IValue:       nil,
+		Str:          "",
+		Notes:        nil,
+		Values:       nil,
+		CallArgTypes: nil,
 	}
 }
 

@@ -2,7 +2,6 @@ package ast
 
 import (
 	"go/ast"
-	"reflect"
 	"strings"
 	"time"
 
@@ -19,33 +18,9 @@ func (w walker) Visit(node ast.Node) ast.Visitor {
 	return nil
 }
 
-func TypeStringToReflectKind(str string) reflect.Kind {
-	switch str {
-	case "string":
-		return reflect.String
-	}
-	return reflect.Invalid
-}
-
-func toTypeStr(pkg string, name string) string {
-	if pkg == "" {
-		return name
-	}
-	return pkg + "." + name
-}
-
 func pkgInReference(str string) string {
 	ss := strings.Split(str, "/")
 	return ss[len(ss)-1]
-}
-
-var InterfaceType reflect.Type
-
-func init() {
-	type T struct {
-		A interface{}
-	}
-	InterfaceType = reflect.ValueOf(T{}).Field(0).Type()
 }
 
 func TypeStringToZeroInterface(str string) gocoder.Type {
@@ -123,7 +98,7 @@ func TypeStringToZeroInterface(str string) gocoder.Type {
 		return gocoder.MustToType([]time.Time{})
 
 	case "interface{}":
-		return gocoder.MustToType(InterfaceType)
+		return gocoder.MustToType(gocoder.InterfaceType)
 
 	case "error":
 		return gocoder.NewTypeName("error")

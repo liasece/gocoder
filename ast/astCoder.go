@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"strings"
@@ -9,25 +8,21 @@ import (
 	"github.com/liasece/gocoder"
 )
 
-type ASTPkg struct {
-	name string
-	node ast.Node
-}
-
-type ASTCoder struct {
+type CodeDecoder struct {
 	fset         *token.FileSet
 	pkgs         *Packages
-	importPkgs   map[string]string
-	DecodedTypes map[string]*ASTTyped
+	DecodedTypes map[string]*LoadedType
 }
 
-type ASTTyped struct {
+type LoadedType struct {
 	gocoder.Type
 }
 
-func NewASTCoder(paths ...string) (*ASTCoder, error) {
+func NewCodeDecoder(paths ...string) (*CodeDecoder, error) {
 	fset := token.NewFileSet()
-	ps := &Packages{}
+	ps := &Packages{
+		List: nil,
+	}
 	for _, path := range paths {
 		pathSS := strings.Split(path, ",")
 		for _, path := range pathSS {
@@ -39,37 +34,33 @@ func NewASTCoder(paths ...string) (*ASTCoder, error) {
 			ps.MergeFrom(pkgs)
 		}
 	}
-	return &ASTCoder{
+	return &CodeDecoder{
 		fset:         fset,
 		pkgs:         ps,
-		importPkgs:   make(map[string]string),
-		DecodedTypes: make(map[string]*ASTTyped),
+		DecodedTypes: make(map[string]*LoadedType),
 	}, nil
 }
 
-func GetTypeFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) (gocoder.Type, error) {
-	opt := gocoder.MergeToCodeOpt(opts...)
-	c, err := NewASTCoder(path)
+func GetTypeFromSource(path string, typeName string) (gocoder.Type, error) {
+	c, err := NewCodeDecoder(path)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetType(typeName, opt)
+	return c.GetType(typeName), nil
 }
 
-func GetInterfaceFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) (gocoder.Interface, error) {
-	opt := gocoder.MergeToCodeOpt(opts...)
-	c, err := NewASTCoder(path)
+func GetInterfaceFromSource(path string, typeName string) (gocoder.Interface, error) {
+	c, err := NewCodeDecoder(path)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetInterface(typeName, opt)
+	return c.GetInterface(typeName), nil
 }
 
-func GetMethodsFromSource(path string, typeName string, opts ...*gocoder.ToCodeOption) ([]gocoder.Func, error) {
-	opt := gocoder.MergeToCodeOpt(opts...)
-	c, err := NewASTCoder(path)
+func GetMethodsFromSource(path string, typeName string) ([]gocoder.Func, error) {
+	c, err := NewCodeDecoder(path)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetMethods(typeName, opt)
+	return c.GetMethods(typeName), nil
 }
