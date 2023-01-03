@@ -40,7 +40,7 @@ func (c *CodeDecoder) GetMethods(reviverTypeName string) []gocoder.Func {
 				if reviverType != nil {
 					name = reviverType.String()
 				}
-				if name != reviverTypeName && name != "*"+reviverTypeName {
+				if name != typeTypeName && name != "*"+typeTypeName {
 					return true
 				}
 				fn := c.GetFuncsFromASTFuncDecl(ctx, ts)
