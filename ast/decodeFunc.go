@@ -40,20 +40,26 @@ func (c *CodeDecoder) GetFuncFromASTField(ctx DecoderContext, receiver gocoder.R
 
 func (c *CodeDecoder) GetFuncsFromASTFuncType(ctx DecoderContext, receiver gocoder.Receiver, name string, se *ast.FuncType) gocoder.Func {
 	var args []gocoder.Arg
-	var returns []gocoder.Type
+	var returns []gocoder.Arg
 
 	if se.Params != nil {
 		for _, arg := range se.Params.List {
 			argType := c.GetTypeFromASTNode(ctx, arg.Type)
+			fieldName := ""
 			for _, argName := range arg.Names {
-				args = append(args, gocoder.NewArg(argName.Name, argType, false))
+				fieldName = argName.Name
 			}
+			args = append(args, gocoder.NewArg(fieldName, argType, false))
 		}
 	}
 	if se.Results != nil {
 		for _, arg := range se.Results.List {
 			argType := c.GetTypeFromASTNode(ctx, arg.Type)
-			returns = append(returns, argType)
+			fieldName := ""
+			for _, argName := range arg.Names {
+				fieldName = argName.Name
+			}
+			returns = append(returns, gocoder.NewArg(fieldName, argType, false))
 		}
 	}
 

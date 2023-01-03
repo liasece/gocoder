@@ -9,9 +9,10 @@ type Func interface {
 	GetName() string
 	GetCodes() []Codable
 	GetArgs() []Arg
-	GetReturns() []Type
+	GetReturns() []Arg
+	GetReturnTypes() []Type
 	GetNotes() []Note
-	GetReceiver() Type
+	GetReceiver() Receiver
 
 	C(...Codable) Func
 	Call(...interface{}) Value
@@ -34,7 +35,7 @@ type tFunc struct {
 	Name     string
 	Codes    []Codable
 	Args     []Arg
-	Returns  []Type
+	Returns  []Arg
 	Receiver Receiver
 	Notes    []Note
 }
@@ -59,11 +60,11 @@ func (t *tFunc) GetArgs() []Arg {
 	return t.Args
 }
 
-func (t *tFunc) GetReturns() []Type {
+func (t *tFunc) GetReturns() []Arg {
 	return t.Returns
 }
 
-func (t *tFunc) GetReceiver() Type {
+func (t *tFunc) GetReceiver() Receiver {
 	return t.Receiver
 }
 
@@ -86,16 +87,24 @@ func (t *tFunc) C(cs ...Codable) Func {
 	return t
 }
 
+func (t *tFunc) GetReturnTypes() []Type {
+	res := make([]Type, 0, len(t.Returns))
+	for _, r := range t.Returns {
+		res = append(res, r.GetType())
+	}
+	return res
+}
+
 func (t *tFunc) Call(argsI ...interface{}) Value {
 	args := MustToValueList(argsI...)
 	var retType Type
 	if len(t.Returns) > 0 {
-		retType = t.Returns[0]
+		retType = t.Returns[0].GetType()
 	}
 	return &tValue{
 		Action:       ValueActionFuncCall,
 		IType:        retType,
-		CallReturns:  t.Returns,
+		CallReturns:  t.GetReturnTypes(),
 		CallArgs:     args,
 		Func:         t,
 		Left:         nil,

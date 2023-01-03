@@ -483,7 +483,7 @@ func (w *tWriter) FuncToCode(t Func) {
 	w.ParenthesesArgs(t.GetArgs()...)
 	if len(t.GetReturns()) > 1 {
 		w.AddStr(" ")
-		w.ParenthesesTypes(t.GetReturns()...)
+		w.ParenthesesArgs(t.GetReturns()...)
 	} else if len(t.GetReturns()) > 0 {
 		w.AddStr(" ")
 		w.Add(t.GetReturns()[0])
@@ -512,7 +512,7 @@ func (w *tWriter) InterfaceFuncToCode(t Func) {
 	w.ParenthesesArgs(t.GetArgs()...)
 	if len(t.GetReturns()) > 1 {
 		w.AddStr(" ")
-		w.ParenthesesTypes(t.GetReturns()...)
+		w.ParenthesesArgs(t.GetReturns()...)
 	} else if len(t.GetReturns()) > 0 {
 		w.AddStr(" ")
 		w.Add(t.GetReturns()[0])

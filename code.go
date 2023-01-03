@@ -380,7 +380,7 @@ func NewReceiver(name string, typ Type) Receiver {
 }
 
 // NewFunc func
-func NewFunc(typ FuncType, name string, receiver Receiver, args []Arg, returns []Type, notes ...Note) Func {
+func NewFunc(typ FuncType, name string, receiver Receiver, args []Arg, returns []Arg, notes ...Note) Func {
 	return &tFunc{
 		Type:     typ,
 		Name:     name,

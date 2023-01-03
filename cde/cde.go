@@ -101,17 +101,17 @@ func Receiver(name string, typ gocoder.Type) gocoder.Receiver {
 }
 
 // Method func
-func Method(name string, receiver gocoder.Receiver, args []gocoder.Arg, returns []gocoder.Type, notes ...gocoder.Note) gocoder.Func {
+func Method(name string, receiver gocoder.Receiver, args []gocoder.Arg, returns []gocoder.Arg, notes ...gocoder.Note) gocoder.Func {
 	return gocoder.NewFunc(gocoder.FuncTypeDefault, name, receiver, args, returns, notes...)
 }
 
 // Func func
-func Func(name string, args []gocoder.Arg, returns []gocoder.Type, notes ...gocoder.Note) gocoder.Func {
+func Func(name string, args []gocoder.Arg, returns []gocoder.Arg, notes ...gocoder.Note) gocoder.Func {
 	return gocoder.NewFunc(gocoder.FuncTypeDefault, name, nil, args, returns, notes...)
 }
 
 // FuncInline func
-func FuncInline(name string, args []gocoder.Arg, returns []gocoder.Type, notes ...gocoder.Note) gocoder.Func {
+func FuncInline(name string, args []gocoder.Arg, returns []gocoder.Arg, notes ...gocoder.Note) gocoder.Func {
 	return gocoder.NewFunc(gocoder.FuncTypeInline, name, nil, args, returns, notes...)
 }
 
