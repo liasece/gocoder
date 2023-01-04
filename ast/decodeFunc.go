@@ -25,7 +25,9 @@ func (c *CodeDecoder) GetFuncsFromASTFuncDecl(ctx DecoderContext, st *ast.FuncDe
 	}
 	receiver := c.GetReceiverFromASTField(ctx, st.Recv.List[0])
 	res := c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type)
-	res.AddNotes(c.GetNoteFromCommentGroup(ctx, st.Doc)...)
+	if res != nil {
+		res.AddNotes(c.GetNoteFromCommentGroup(ctx, st.Doc)...)
+	}
 	return res
 }
 
@@ -38,7 +40,9 @@ func (c *CodeDecoder) GetFuncFromASTField(ctx DecoderContext, receiver gocoder.R
 		}
 	}
 	res := c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type.(*ast.FuncType))
-	res.AddNotes(c.GetNoteFromCommentGroup(ctx, st.Doc, st.Comment)...)
+	if res != nil {
+		res.AddNotes(c.GetNoteFromCommentGroup(ctx, st.Doc, st.Comment)...)
+	}
 	return res
 }
 

@@ -32,7 +32,9 @@ func (c *CodeDecoder) getTypeFromASTNodeWithName(ctx DecoderContext, st ast.Node
 		return c.GetType(pkgName + "." + t.Sel.Name)
 	case *ast.TypeSpec:
 		res := c.getTypeFromASTNodeWithName(ctx, t.Type)
-		res.AddNotes(c.GetNoteFromCommentGroup(ctx, t.Comment, t.Doc)...)
+		if res != nil {
+			res.AddNotes(c.GetNoteFromCommentGroup(ctx, t.Comment, t.Doc)...)
+		}
 		return res
 	case *ast.StructType:
 		return c.GetTypeFromASTStructType(ctx, t)
