@@ -198,15 +198,29 @@ func (t *tType) RefType() reflect.Type {
 
 func (t *tType) UnPtr() Type {
 	if t.Kind() == reflect.Ptr {
+		if strings.HasPrefix(t.Str, "*") {
+			if t.Str == "*" {
+				return t.Next
+			}
+			res := t.Clone().(*tType)
+			res.Str = t.Str[1:]
+			return res
+		}
+		var refType reflect.Type
+		if t.Type != nil {
+			refType = t.Type.Elem()
+		}
 		return &tType{
 			TNoteCode:   TNoteCode{nil},
-			Type:        t.Type.Elem(),
+			Type:        refType,
 			Pkg:         t.Pkg,
 			Str:         "",
 			Named:       "",
 			Next:        nil,
 			inReference: t.inReference,
 			kind:        0,
+			fields:      nil,
+			funcs:       nil,
 		}
 	}
 	return t
@@ -224,6 +238,8 @@ func (t *tType) TackPtr() Type {
 				Named:       "",
 				inReference: t.inReference,
 				kind:        0,
+				fields:      nil,
+				funcs:       nil,
 			}
 		}
 		return t
@@ -238,6 +254,8 @@ func (t *tType) TackPtr() Type {
 			Named:       "",
 			inReference: t.inReference,
 			kind:        0,
+			fields:      nil,
+			funcs:       nil,
 		}
 	}
 	return t
@@ -254,6 +272,8 @@ func (t *tType) Slice() Type {
 			Named:       "",
 			inReference: t.inReference,
 			kind:        0,
+			fields:      nil,
+			funcs:       nil,
 		}
 	}
 	if t.Kind() != reflect.Ptr {
@@ -270,6 +290,8 @@ func (t *tType) Slice() Type {
 			Next:        nil,
 			inReference: t.inReference,
 			kind:        0,
+			fields:      nil,
+			funcs:       nil,
 		}
 	}
 	return t
@@ -277,13 +299,9 @@ func (t *tType) Slice() Type {
 
 func (t *tType) Elem() Type {
 	if t.Str == "[]" || t.Str == "*" {
-		tmp := *t
-		res := &tmp
-		res.Str = ""
-		return res
+		return t.Next
 	}
-	tmp := *t
-	res := &tmp
+	res := t.Clone().(*tType)
 	res.Type = t.Type.Elem()
 	return res
 }
@@ -512,6 +530,8 @@ func (t *tType) GetNext() Type {
 			Next:        nil,
 			inReference: t.inReference,
 			kind:        0,
+			fields:      nil,
+			funcs:       nil,
 		}
 	}
 	return nil

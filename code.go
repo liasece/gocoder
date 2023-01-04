@@ -325,29 +325,26 @@ func NewTypeI(i interface{}) Type {
 
 // NewTypeName func
 func NewTypeName(name string) Type {
-	return &tType{
-		TNoteCode:   TNoteCode{nil},
-		Str:         name,
-		Type:        nil,
-		Pkg:         "",
-		Named:       "",
-		Next:        nil,
-		inReference: false,
-		kind:        0,
-		funcs:       nil,
-		fields:      nil,
-	}
+	return NewTypeDetail("", name)
 }
 
 // NewTypeDetail func
 func NewTypeDetail(pkg string, name string) Type {
+	var next Type
+	if strings.HasPrefix(name, "*") && name != "*" {
+		next = NewTypeDetail(pkg, name[1:])
+		name = name[:1]
+	} else if strings.HasPrefix(name, "[]") && name != "[]" {
+		next = NewTypeDetail(pkg, name[2:])
+		name = name[:2]
+	}
 	return &tType{
 		TNoteCode:   TNoteCode{nil},
 		Str:         name,
 		Pkg:         pkg,
 		Type:        nil,
 		Named:       "",
-		Next:        nil,
+		Next:        next,
 		inReference: false,
 		kind:        0,
 		funcs:       nil,

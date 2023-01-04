@@ -19,4 +19,7 @@ func TestGetTypeFromSource(t *testing.T) {
 	}
 	fmt.Println(str)
 	t.Error("finish")
+	nextType := res.FieldByName("Next").GetType().Elem()
+	nextType.SetInReference(false)
+	fmt.Printf("finish: %+v\n", nextType)
 }

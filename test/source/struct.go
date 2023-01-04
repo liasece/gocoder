@@ -11,8 +11,9 @@ type BigStruct struct {
 	SquadID string `bson:"squadID"`
 	UserID  string `bson:"userID"`
 	// this entity id
-	CreateAt time.Time `bson:"createAt"`
-	Ready    bool      `bson:"ready"`
+	CreateAt time.Time  `bson:"createAt"`
+	Ready    bool       `bson:"ready"`
+	Next     *BigStruct `bson:"next"`
 }
 
 type IBigStruct interface {
