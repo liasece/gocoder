@@ -3,6 +3,7 @@ package gocoder
 // Func type
 type Func interface {
 	Codable
+	NoteCode
 
 	// Getter
 	GetType() FuncType
@@ -11,7 +12,6 @@ type Func interface {
 	GetArgs() []Arg
 	GetReturns() []Arg
 	GetReturnTypes() []Type
-	GetNotes() []Note
 	GetReceiver() Receiver
 
 	C(...Codable) Func
@@ -30,14 +30,16 @@ const (
 	FuncTypeInline  FuncType = 1
 )
 
+var _ Func = (*tFunc)(nil)
+
 type tFunc struct {
+	TNoteCode
 	Type     FuncType
 	Name     string
 	Codes    []Codable
 	Args     []Arg
 	Returns  []Arg
 	Receiver Receiver
-	Notes    []Note
 }
 
 func (t *tFunc) WriteCode(w Writer) {
@@ -66,10 +68,6 @@ func (t *tFunc) GetReturns() []Arg {
 
 func (t *tFunc) GetReceiver() Receiver {
 	return t.Receiver
-}
-
-func (t *tFunc) GetNotes() []Note {
-	return t.Notes
 }
 
 func (t *tFunc) ToCode() Code {
@@ -112,7 +110,6 @@ func (t *tFunc) Call(argsI ...interface{}) Value {
 		Name:         "",
 		IValue:       nil,
 		Str:          "",
-		Notes:        nil,
 		Values:       nil,
 		CallArgTypes: nil,
 	}

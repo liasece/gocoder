@@ -2,6 +2,8 @@ package gocoder
 
 type Struct interface {
 	Codable
+	NoteCode
+
 	GetFields() []Field
 	AddFields([]Field)
 	FieldByName(name string) Field
@@ -13,6 +15,8 @@ type Struct interface {
 var _ Struct = (*tStruct)(nil)
 
 type tStruct struct {
+	TNoteCode
+
 	Fields []Field
 	ReName string
 }

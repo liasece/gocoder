@@ -175,7 +175,6 @@ func NewValue(name string, t Type) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -196,7 +195,6 @@ func NewValueFunc(name string, typ Type, argTypes []Type, returns []Type) Value 
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 	}
@@ -213,7 +211,6 @@ func NewValueNameI(name string, i interface{}) Value {
 		Right:        nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -232,7 +229,6 @@ func NewOnlyTypeValue(t Type) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -251,7 +247,6 @@ func NewValues(vs ...Value) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		IType:        nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -270,7 +265,6 @@ func NewValueNameRef(name string, t reflect.Type) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -289,7 +283,6 @@ func NewValueI(i interface{}) Value {
 		Name:         "",
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -381,15 +374,16 @@ func NewReceiver(name string, typ Type) Receiver {
 
 // NewFunc func
 func NewFunc(typ FuncType, name string, receiver Receiver, args []Arg, returns []Arg, notes ...Note) Func {
-	return &tFunc{
+	f := &tFunc{
 		Type:     typ,
 		Name:     name,
 		Receiver: receiver,
 		Args:     args,
 		Returns:  returns,
-		Notes:    notes,
 		Codes:    nil,
 	}
+	f.SetNotes(notes)
+	return f
 }
 
 // NewStruct func

@@ -9,6 +9,7 @@ import (
 // Value type
 type Value interface {
 	Codable
+	NoteCode
 
 	// Getter
 	GetAction() ValueAction
@@ -18,7 +19,6 @@ type Value interface {
 	GetRight() Value
 	GetFunc() Func
 	GetCallArgs() []Value
-	GetNotes() []Note
 	GetValues() []Value
 	GetIType() Type
 
@@ -117,6 +117,8 @@ var valueActionForceNeedParent = map[ValueAction]bool{
 }
 
 type tValue struct {
+	TNoteCode
+
 	Left   Codable
 	Action ValueAction
 	Right  Value
@@ -126,8 +128,6 @@ type tValue struct {
 	IValue interface{}
 	Str    string
 	Func   Func
-
-	Notes []Note
 
 	Values []Value
 
@@ -162,10 +162,6 @@ func (t *tValue) GetCallArgs() []Value {
 
 func (t *tValue) GetArgs() []Value {
 	return t.CallArgs
-}
-
-func (t *tValue) GetNotes() []Note {
-	return t.Notes
 }
 
 func (t *tValue) GetFunc() Func {
@@ -226,7 +222,6 @@ func (t *tValue) field(name string) *tValue {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -256,7 +251,6 @@ func (t *tValue) Method(name string) Value {
 				IValue:       nil,
 				Str:          "",
 				Func:         nil,
-				Notes:        nil,
 				Values:       nil,
 				CallArgs:     nil,
 				CallArgTypes: nil,
@@ -285,7 +279,6 @@ func (t *tValue) Method(name string) Value {
 				IValue:       nil,
 				Str:          "",
 				Func:         nil,
-				Notes:        nil,
 				Values:       nil,
 				CallArgs:     nil,
 			}
@@ -300,7 +293,6 @@ func (t *tValue) Method(name string) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -350,7 +342,6 @@ func (t *tValue) Cast(i interface{}) Value {
 					IValue:       nil,
 					Str:          "",
 					Func:         nil,
-					Notes:        nil,
 					Values:       nil,
 					CallArgs:     nil,
 					CallArgTypes: nil,
@@ -368,7 +359,6 @@ func (t *tValue) Cast(i interface{}) Value {
 				IValue:       nil,
 				Str:          "",
 				Func:         nil,
-				Notes:        nil,
 				Values:       nil,
 				CallArgs:     nil,
 				CallArgTypes: nil,
@@ -394,7 +384,6 @@ func (t *tValue) Assertion(i interface{}) Value {
 				IValue:       nil,
 				Str:          "",
 				Func:         nil,
-				Notes:        nil,
 				Values:       nil,
 				CallArgs:     nil,
 				CallArgTypes: nil,
@@ -423,7 +412,6 @@ func (t *tValue) Assertion(i interface{}) Value {
 					IValue:       nil,
 					Str:          "",
 					Func:         nil,
-					Notes:        nil,
 					Values:       nil,
 					CallArgs:     nil,
 					CallArgTypes: nil,
@@ -475,7 +463,6 @@ func (t *tValue) Call(argsI ...interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgTypes: nil,
 	}
@@ -523,7 +510,7 @@ func (t *tValue) TypeString() string {
 }
 
 func (t *tValue) Note(is ...interface{}) Value {
-	t.Notes = append(t.Notes, MustToNoteList(NoteKindBlock, is...)...)
+	t.AddNotes(MustToNoteList(NoteKindBlock, is...)...)
 	return t
 }
 
@@ -583,7 +570,6 @@ func (t *tValue) Set(i interface{}, opts ...*SetOption) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -605,7 +591,6 @@ func (t *tValue) Dot(name string) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -632,7 +617,6 @@ func (t *tValue) AutoSet(i interface{}, opts ...*SetOption) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -652,7 +636,6 @@ func (t *tValue) Index(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -686,7 +669,6 @@ func (t *tValue) Add(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -705,7 +687,6 @@ func (t *tValue) Sub(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -724,7 +705,6 @@ func (t *tValue) Mul(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -743,7 +723,6 @@ func (t *tValue) Div(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -762,7 +741,6 @@ func (t *tValue) Equal(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -781,7 +759,6 @@ func (t *tValue) GT(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -800,7 +777,6 @@ func (t *tValue) LT(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -819,7 +795,6 @@ func (t *tValue) GE(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -838,7 +813,6 @@ func (t *tValue) LE(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -857,7 +831,6 @@ func (t *tValue) NE(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -875,7 +848,6 @@ func (t *tValue) Not() Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -894,7 +866,6 @@ func (t *tValue) Or(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -913,7 +884,6 @@ func (t *tValue) And(i interface{}) Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -936,7 +906,6 @@ func (t *tValue) UnPtr() Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,
@@ -959,7 +928,6 @@ func (t *tValue) TakePtr() Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,

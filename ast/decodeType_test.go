@@ -18,5 +18,5 @@ func TestGetTypeFromSource(t *testing.T) {
 		return
 	}
 	fmt.Println(str)
-	t.Error("")
+	t.Error("finish")
 }

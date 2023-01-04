@@ -24,7 +24,9 @@ func (c *CodeDecoder) GetFuncsFromASTFuncDecl(ctx DecoderContext, st *ast.FuncDe
 		name = st.Name.Name
 	}
 	receiver := c.GetReceiverFromASTField(ctx, st.Recv.List[0])
-	return c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type)
+	res := c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type)
+	res.AddNotes(c.GetNoteFromCommentGroup(ctx, st.Doc)...)
+	return res
 }
 
 func (c *CodeDecoder) GetFuncFromASTField(ctx DecoderContext, receiver gocoder.Receiver, st *ast.Field) gocoder.Func {
@@ -35,7 +37,9 @@ func (c *CodeDecoder) GetFuncFromASTField(ctx DecoderContext, receiver gocoder.R
 			name = st.Names[0].Name
 		}
 	}
-	return c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type.(*ast.FuncType))
+	res := c.GetFuncsFromASTFuncType(ctx, receiver, name, st.Type.(*ast.FuncType))
+	res.AddNotes(c.GetNoteFromCommentGroup(ctx, st.Doc, st.Comment)...)
+	return res
 }
 
 func (c *CodeDecoder) GetFuncsFromASTFuncType(ctx DecoderContext, receiver gocoder.Receiver, name string, se *ast.FuncType) gocoder.Func {
@@ -49,7 +53,9 @@ func (c *CodeDecoder) GetFuncsFromASTFuncType(ctx DecoderContext, receiver gocod
 			for _, argName := range arg.Names {
 				fieldName = argName.Name
 			}
-			args = append(args, gocoder.NewArg(fieldName, argType, false))
+			gocoderArg := gocoder.NewArg(fieldName, argType, false)
+			gocoderArg.AddNotes(c.GetNoteFromCommentGroup(ctx, arg.Doc, arg.Comment)...)
+			args = append(args, gocoderArg)
 		}
 	}
 	if se.Results != nil {
@@ -59,7 +65,9 @@ func (c *CodeDecoder) GetFuncsFromASTFuncType(ctx DecoderContext, receiver gocod
 			for _, argName := range arg.Names {
 				fieldName = argName.Name
 			}
-			returns = append(returns, gocoder.NewArg(fieldName, argType, false))
+			gocoderArg := gocoder.NewArg(fieldName, argType, false)
+			gocoderArg.AddNotes(c.GetNoteFromCommentGroup(ctx, arg.Doc, arg.Comment)...)
+			returns = append(returns, gocoderArg)
 		}
 	}
 

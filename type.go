@@ -8,6 +8,8 @@ import (
 // Type type
 type Type interface {
 	Codable
+	NoteCode
+
 	RefType() reflect.Type
 	IsPtr() bool
 	IsSlice() bool
@@ -46,8 +48,12 @@ type Type interface {
 	InterfaceForType() bool
 }
 
+var _ Type = (*tType)(nil)
+
 type tType struct {
+	TNoteCode
 	reflect.Type
+
 	Str    string
 	Pkg    string
 	Struct Struct
@@ -68,9 +74,6 @@ func (t *tType) IsNil() bool {
 }
 
 func (t *tType) IsPtr() bool {
-	// if t == nil || t.Type == nil {
-	// 	return false
-	// }
 	if t.Type == nil && t.Str != "" {
 		return t.Str[0] == '*'
 	}
@@ -148,9 +151,6 @@ func (t *tType) RefType() reflect.Type {
 }
 
 func (t *tType) UnPtr() Type {
-	// if t == nil || t.Type == nil {
-	// 	return t
-	// }
 	if t.Kind() == reflect.Ptr {
 		return &tType{
 			Type:   t.Type.Elem(),
@@ -174,7 +174,6 @@ func (t *tType) TackPtr() Type {
 				Type:   nil,
 				Pkg:    "",
 				Named:  "",
-				// Pkg:    t.Pkg,
 			}
 		}
 		return t
@@ -201,7 +200,6 @@ func (t *tType) Slice() Type {
 			Type:   nil,
 			Pkg:    "",
 			Named:  "",
-			// Pkg:    t.Pkg,
 		}
 	}
 	if t.Kind() != reflect.Ptr {
@@ -346,7 +344,6 @@ func (t *tType) FieldByName(name string) (reflect.StructField, bool) {
 }
 
 func (t *tType) FieldTypeByName(name string) (Type, bool) {
-	// log.Error("test FieldByName", log.Any("name", name))
 	if t.Struct != nil {
 		f := t.Struct.FieldByName(name)
 		if f != nil {
@@ -442,7 +439,6 @@ func (t *tType) SetNamed(v string) {
 }
 
 func (t *tType) SetPkg(v string) {
-	// log.Debug("SetPkg", log.Any("v", v), log.Any("t.string", t.String()))
 	t.Pkg = v
 }
 
@@ -456,7 +452,6 @@ func (t *tType) Zero() Value {
 		IValue:       nil,
 		Str:          "",
 		Func:         nil,
-		Notes:        nil,
 		Values:       nil,
 		CallArgs:     nil,
 		CallArgTypes: nil,

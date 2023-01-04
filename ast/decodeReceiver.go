@@ -12,5 +12,7 @@ func (c *CodeDecoder) GetReceiverFromASTField(ctx DecoderContext, st *ast.Field)
 		name = st.Names[0].Name
 	}
 	t := c.getTypeFromASTNodeWithName(ctx, st.Type)
-	return gocoder.NewReceiver(name, t)
+	res := gocoder.NewReceiver(name, t)
+	res.AddNotes(c.GetNoteFromCommentGroup(ctx, st.Doc, st.Comment)...)
+	return res
 }

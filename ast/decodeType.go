@@ -11,7 +11,8 @@ import (
 
 func (c *CodeDecoder) GetTypeFromASTStructType(ctx DecoderContext, st *ast.StructType) gocoder.Type {
 	fields := c.GetStructFieldFromASTStruct(ctx, st)
-	res := gocoder.NewStruct(ctx.GetBuildingItemName(), fields).GetType()
+	gocoderStruct := gocoder.NewStruct(ctx.GetBuildingItemName(), fields)
+	res := gocoderStruct.GetType()
 	res.SetPkg(ctx.GetCurrentPkg())
 	return res
 }
@@ -31,7 +32,9 @@ func (c *CodeDecoder) getTypeFromASTNodeWithName(ctx DecoderContext, st ast.Node
 		pkgName := ctx.GetPkgByAlias(t.X.(*ast.Ident).Name)
 		return c.GetType(pkgName + "." + t.Sel.Name)
 	case *ast.TypeSpec:
-		return c.getTypeFromASTNodeWithName(ctx, t.Type)
+		res := c.getTypeFromASTNodeWithName(ctx, t.Type)
+		res.AddNotes(c.GetNoteFromCommentGroup(ctx, t.Comment, t.Doc)...)
+		return res
 	case *ast.StructType:
 		return c.GetTypeFromASTStructType(ctx, t)
 	case *ast.ArrayType:
@@ -114,26 +117,32 @@ func (c *CodeDecoder) GetType(fullTypeName string) gocoder.Type {
 				}
 			}
 			for _, astFile := range pkgV.Package.Files {
-				ast.Walk(walker(func(node ast.Node) bool {
-					if node == nil {
-						return true
-					}
-					ts, ok := node.(*ast.TypeSpec)
-					if !ok {
-						return true
-					}
-					if ts.Name.Name == typeTypeName {
-						ctx := NewDecoderContextByAstFile(pkgV.Name, typeTypeName, astFile)
-						resType = c.GetTypeFromASTNode(ctx, ts)
-						if resType != nil {
-							if resType.IsStruct() && resType.Package() == "" {
-								resType.SetPkg(pkgV.Name)
+				ast.Print(c.fset, astFile)
+				for _, astDecl := range astFile.Decls {
+					if astGenDecl, ok := astDecl.(*ast.GenDecl); ok {
+						ast.Walk(walker(func(node ast.Node) bool {
+							if node == nil {
+								return true
 							}
-							return false
-						}
+							ts, ok := node.(*ast.TypeSpec)
+							if !ok {
+								return true
+							}
+							if ts.Name.Name == typeTypeName {
+								ctx := NewDecoderContextByAstFile(pkgV.Name, typeTypeName, astFile)
+								resType = c.GetTypeFromASTNode(ctx, ts)
+								if resType != nil {
+									if resType.IsStruct() && resType.Package() == "" {
+										resType.SetPkg(pkgV.Name)
+									}
+									resType.AddNotes(c.GetNoteFromCommentGroup(ctx, astGenDecl.Doc)...)
+									return false
+								}
+							}
+							return true
+						}), astGenDecl)
 					}
-					return true
-				}), astFile)
+				}
 				if resType != nil {
 					break
 				}

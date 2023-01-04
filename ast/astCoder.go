@@ -27,7 +27,7 @@ func NewCodeDecoder(paths ...string) (*CodeDecoder, error) {
 		pathSS := strings.Split(path, ",")
 		for _, path := range pathSS {
 			// from path
-			pkgs, err := Parse(fset, path, nil, parser.AllErrors)
+			pkgs, err := Parse(fset, path, nil, parser.AllErrors|parser.ParseComments)
 			if err != nil {
 				return nil, err
 			}

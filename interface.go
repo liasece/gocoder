@@ -2,6 +2,8 @@ package gocoder
 
 type Interface interface {
 	Codable
+	NoteCode
+
 	GetFuncs() []Func
 	FuncByName(name string) Func
 	GetName() string
@@ -12,6 +14,7 @@ type Interface interface {
 var _ Interface = (*tInterface)(nil)
 
 type tInterface struct {
+	TNoteCode
 	Funcs  []Func
 	ReName string
 }

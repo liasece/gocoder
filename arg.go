@@ -3,6 +3,7 @@ package gocoder
 // Arg type
 type Arg interface {
 	Codable
+	NoteCode
 
 	// Getter
 	GetName() string
@@ -13,7 +14,11 @@ type Arg interface {
 	InterfaceForArg() bool
 }
 
+var _ Arg = (*tArg)(nil)
+
 type tArg struct {
+	TNoteCode
+
 	Name           string
 	Type           Type
 	VariableLength bool

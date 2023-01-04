@@ -259,6 +259,11 @@ func (w *tWriter) SetPkgTool(v PkgTool) {
 
 // Line func
 func (w *tWriter) WriteCode(c Codable) {
+	if noteCode, ok := c.(NoteCode); ok {
+		for _, note := range noteCode.Notes() {
+			w.Add(note)
+		}
+	}
 	switch t := c.(type) {
 	case Receiver:
 		w.Add("(", t.GetName(), " ", t.GetType(), ")")
@@ -288,9 +293,6 @@ func (w *tWriter) WriteCode(c Codable) {
 		w.NoteToCode(t)
 	case Type:
 		str := typeStringOut(t, w.pkgTool, w.toPkg)
-		// if str == "" {
-		// 	log.Panic("typeStringOut str == \"\"", log.Reflect("t", t))
-		// }
 		if str == "" && t.GetNamed() != "" {
 			w.AddStr(t.GetNamed() + " ")
 		} else {
@@ -440,7 +442,7 @@ func (w *tWriter) ValueToCode(t Value) {
 			}
 		}
 	}
-	for _, note := range t.GetNotes() {
+	for _, note := range t.Notes() {
 		w.Add(note)
 	}
 }
@@ -468,8 +470,8 @@ func (w *tWriter) FuncToCode(t Func) {
 		}()
 	}
 	if t.GetType() != FuncTypeInline {
-		if len(t.GetNotes()) > 0 {
-			w.AddNote(t.GetNotes()...)
+		if len(t.Notes()) > 0 {
+			w.AddNote(t.Notes()...)
 		}
 	}
 	w.Add("func")
@@ -495,8 +497,8 @@ func (w *tWriter) FuncToCode(t Func) {
 		w.BlockCodes(t.GetCodes()...)
 	}
 	if t.GetType() == FuncTypeInline {
-		if len(t.GetNotes()) > 0 {
-			w.AddNote(t.GetNotes()...)
+		if len(t.Notes()) > 0 {
+			w.AddNote(t.Notes()...)
 		}
 	}
 }

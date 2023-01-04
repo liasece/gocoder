@@ -8,6 +8,30 @@ type Note interface {
 	InterfaceForNote() bool
 }
 
+type NoteCode interface {
+	Notes() []Note
+	SetNotes([]Note)
+	AddNotes(...Note)
+}
+
+var _ NoteCode = (*TNoteCode)(nil)
+
+type TNoteCode struct {
+	notes []Note
+}
+
+func (t *TNoteCode) Notes() []Note {
+	return t.notes
+}
+
+func (t *TNoteCode) SetNotes(notes []Note) {
+	t.notes = notes
+}
+
+func (t *TNoteCode) AddNotes(notes ...Note) {
+	t.notes = append(t.notes, notes...)
+}
+
 // NoteKind type
 type NoteKind int
 
@@ -17,6 +41,8 @@ const (
 	NoteKindLine  NoteKind = 1
 	NoteKindBlock NoteKind = 2
 )
+
+var _ Note = (*tNote)(nil)
 
 type tNote struct {
 	Content string
