@@ -17,7 +17,7 @@ func GetTypeFromSource(path string, typeName string) (gocoder.Type, error) {
 	return c.GetType(typeName), nil
 }
 
-func GetInterfaceFromSource(path string, typeName string) (gocoder.Interface, error) {
+func GetInterfaceFromSource(path string, typeName string) (gocoder.Type, error) {
 	c, err := ast.NewCodeDecoder(path)
 	if err != nil {
 		return nil, err

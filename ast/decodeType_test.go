@@ -12,7 +12,7 @@ func TestGetTypeFromSource(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	str, err := gocoder.WriteToFileStr(gocoder.NewCode().C(res.GetStruct()))
+	str, err := gocoder.WriteToFileStr(gocoder.NewCode().C(res))
 	if err != nil {
 		t.Error(err)
 		return

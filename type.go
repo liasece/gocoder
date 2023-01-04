@@ -21,6 +21,7 @@ type Type interface {
 	IsNil() bool
 	Elem() Type
 	Kind() reflect.Kind
+	SetKind(reflect.Kind)
 	String() string
 	ShowString() string
 	CurrentCode() string
@@ -30,7 +31,6 @@ type Type interface {
 	Implements(i interface{}) bool
 	NumField() int
 	Field(i int) Field
-	FieldByName(name string) (reflect.StructField, bool)
 	FieldTypeByName(name string) (Type, bool)
 	MethodByName(name string) (reflect.Method, bool)
 	Zero() Value
@@ -40,12 +40,24 @@ type Type interface {
 	SetNamed(string)
 	SetPkg(string)
 	GetNext() Type
-	GetStruct() Struct
 
 	AllSub() []Type // list all type chian nodes, top type in last index
 	HasPtrSubType() bool
 	HasSliceSubType() bool
 	InterfaceForType() bool
+	InReference() bool
+	SetInReference(bool)
+
+	// struct
+	GetFields() []Field
+	AddFields([]Field)
+	FieldByName(name string) Field
+
+	// interface
+	GetFuncs() []Func
+	FuncByName(name string) Func
+
+	Clone() Type
 }
 
 var _ Type = (*tType)(nil)
@@ -54,11 +66,45 @@ type tType struct {
 	TNoteCode
 	reflect.Type
 
-	Str    string
-	Pkg    string
-	Struct Struct
-	Named  string
-	Next   Type
+	Str   string
+	Pkg   string
+	Named string
+	Next  Type
+
+	// struct
+	fields []Field
+
+	// interface
+	funcs []Func
+
+	inReference bool // like: `boo int`, the int is inReference
+	kind        reflect.Kind
+}
+
+func (t *tType) Clone() Type {
+	res := &tType{
+		TNoteCode: t.TNoteCode.Clone(),
+		Type:      t.Type,
+
+		Str:         t.Str,
+		Pkg:         t.Pkg,
+		Named:       t.Named,
+		Next:        t.Next,
+		inReference: t.inReference,
+		kind:        t.kind,
+		fields:      t.fields,
+		funcs:       t.funcs,
+	}
+	if t.Next != nil {
+		res.Next = t.Next.Clone()
+	}
+	if t.fields != nil {
+		res.fields = make([]Field, len(t.fields))
+		for i, v := range t.fields {
+			res.fields[i] = v.Clone()
+		}
+	}
+	return res
 }
 
 func (t *tType) WriteCode(w Writer) {
@@ -129,10 +175,10 @@ func (t *tType) RefType() reflect.Type {
 	if t.Type != nil {
 		return t.Type
 	}
-	if t.Struct != nil {
-		fields := make([]reflect.StructField, 0, len(t.Struct.GetFields()))
+	if t.kind == reflect.Struct && t.fields != nil {
+		fields := make([]reflect.StructField, 0, len(t.fields))
 		sizeOffset := uintptr(0)
-		for _, v := range t.Struct.GetFields() {
+		for _, v := range t.fields {
 			typ := v.GetType().RefType()
 			fields = append(fields, reflect.StructField{
 				Name:      v.GetName(),
@@ -153,12 +199,14 @@ func (t *tType) RefType() reflect.Type {
 func (t *tType) UnPtr() Type {
 	if t.Kind() == reflect.Ptr {
 		return &tType{
-			Type:   t.Type.Elem(),
-			Struct: t.Struct,
-			Pkg:    t.Pkg,
-			Str:    "",
-			Named:  "",
-			Next:   nil,
+			TNoteCode:   TNoteCode{nil},
+			Type:        t.Type.Elem(),
+			Pkg:         t.Pkg,
+			Str:         "",
+			Named:       "",
+			Next:        nil,
+			inReference: t.inReference,
+			kind:        0,
 		}
 	}
 	return t
@@ -168,24 +216,28 @@ func (t *tType) TackPtr() Type {
 	if t.Type == nil {
 		if !strings.HasPrefix(t.Str, "*") {
 			return &tType{
-				Str:    "*",
-				Struct: t.Struct,
-				Next:   t,
-				Type:   nil,
-				Pkg:    "",
-				Named:  "",
+				TNoteCode:   TNoteCode{nil},
+				Str:         "*",
+				Next:        t,
+				Type:        nil,
+				Pkg:         "",
+				Named:       "",
+				inReference: t.inReference,
+				kind:        0,
 			}
 		}
 		return t
 	}
 	if t.Kind() != reflect.Ptr {
 		return &tType{
-			Type:   reflect.PtrTo(t.Type),
-			Str:    t.Str,
-			Struct: t.Struct,
-			Pkg:    t.Pkg,
-			Next:   nil,
-			Named:  "",
+			TNoteCode:   TNoteCode{nil},
+			Type:        reflect.PtrTo(t.Type),
+			Str:         t.Str,
+			Pkg:         t.Pkg,
+			Next:        nil,
+			Named:       "",
+			inReference: t.inReference,
+			kind:        0,
 		}
 	}
 	return t
@@ -194,12 +246,14 @@ func (t *tType) TackPtr() Type {
 func (t *tType) Slice() Type {
 	if t.Type == nil {
 		return &tType{
-			Str:    "[]",
-			Struct: t.Struct,
-			Next:   t,
-			Type:   nil,
-			Pkg:    "",
-			Named:  "",
+			TNoteCode:   TNoteCode{nil},
+			Str:         "[]",
+			Next:        t,
+			Type:        nil,
+			Pkg:         "",
+			Named:       "",
+			inReference: t.inReference,
+			kind:        0,
 		}
 	}
 	if t.Kind() != reflect.Ptr {
@@ -208,12 +262,14 @@ func (t *tType) Slice() Type {
 			str = "[]" + str
 		}
 		return &tType{
-			Type:   reflect.SliceOf(t.Type),
-			Struct: t.Struct,
-			Str:    str,
-			Pkg:    "",
-			Named:  "",
-			Next:   nil,
+			TNoteCode:   TNoteCode{nil},
+			Type:        reflect.SliceOf(t.Type),
+			Str:         str,
+			Pkg:         "",
+			Named:       "",
+			Next:        nil,
+			inReference: t.inReference,
+			kind:        0,
 		}
 	}
 	return t
@@ -339,13 +395,31 @@ func (t *tType) Implements(i interface{}) bool {
 	return t.Type.Implements(u.RefType())
 }
 
-func (t *tType) FieldByName(name string) (reflect.StructField, bool) {
-	return t.Type.FieldByName(name)
+func (t *tType) FieldByName(name string) Field {
+	if t.kind == reflect.Struct && t.fields != nil {
+		for _, f := range t.fields {
+			if f.GetName() == name {
+				return f
+			}
+		}
+	}
+	{
+		f, ok := t.Type.FieldByName(name)
+		if !ok {
+			return nil
+		}
+		return &tField{
+			TNoteCode: TNoteCode{nil},
+			Type:      NewType(f.Type),
+			ReName:    f.Name,
+			Tag:       string(f.Tag),
+		}
+	}
 }
 
 func (t *tType) FieldTypeByName(name string) (Type, bool) {
-	if t.Struct != nil {
-		f := t.Struct.FieldByName(name)
+	if t.kind == reflect.Struct && t.fields != nil {
+		f := t.FieldByName(name)
 		if f != nil {
 			return f.GetType(), true
 		}
@@ -358,21 +432,24 @@ func (t *tType) FieldTypeByName(name string) (Type, bool) {
 }
 
 func (t *tType) NumField() int {
-	if t.Struct != nil {
-		return len(t.Struct.GetFields())
+	if t.kind == reflect.Struct && t.fields != nil {
+		return len(t.GetFields())
 	}
 	return t.Type.NumField()
 }
 
 func (t *tType) Field(i int) Field {
-	if t.Struct != nil {
-		return t.Struct.GetFields()[i]
+	if t.kind == reflect.Struct && t.fields != nil {
+		return t.GetFields()[i]
 	}
 	f := t.Type.Field(i)
 	return NewField(f.Name, NewTypeI(f.Type), string(f.Tag))
 }
 
 func (t *tType) Kind() reflect.Kind {
+	if t.kind != 0 {
+		return t.kind
+	}
 	if strings.HasPrefix(t.Str, "[]") {
 		return reflect.Slice
 	}
@@ -382,10 +459,14 @@ func (t *tType) Kind() reflect.Kind {
 	if t.Type != nil {
 		return t.Type.Kind()
 	}
-	if t.Struct != nil {
+	if t.kind == reflect.Struct && t.fields != nil {
 		return reflect.Struct
 	}
 	return t.RefType().Kind()
+}
+
+func (t *tType) SetKind(v reflect.Kind) {
+	t.kind = v
 }
 
 func (t *tType) MethodByName(name string) (reflect.Method, bool) {
@@ -423,12 +504,14 @@ func (t *tType) GetNext() Type {
 		t.Type.Kind() == reflect.Pointer ||
 		t.Type.Kind() == reflect.Slice) {
 		return &tType{
-			Type:   t.Type.Elem(),
-			Struct: t.Struct,
-			Pkg:    t.Pkg,
-			Str:    "",
-			Named:  "",
-			Next:   nil,
+			TNoteCode:   TNoteCode{nil},
+			Type:        t.Type.Elem(),
+			Pkg:         t.Pkg,
+			Str:         "",
+			Named:       "",
+			Next:        nil,
+			inReference: t.inReference,
+			kind:        0,
 		}
 	}
 	return nil
@@ -444,6 +527,7 @@ func (t *tType) SetPkg(v string) {
 
 func (t *tType) Zero() Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		IType:        t,
 		Action:       ValueActionZero,
 		Left:         nil,
@@ -463,6 +547,31 @@ func (t *tType) InterfaceForType() bool {
 	return true
 }
 
-func (t *tType) GetStruct() Struct {
-	return t.Struct
+func (t *tType) InReference() bool {
+	return t.inReference
+}
+
+func (t *tType) SetInReference(v bool) {
+	t.inReference = v
+}
+
+func (t *tType) GetFields() []Field {
+	return t.fields
+}
+
+func (t *tType) AddFields(fs []Field) {
+	t.fields = append(t.fields, fs...)
+}
+
+func (t *tType) GetFuncs() []Func {
+	return t.funcs
+}
+
+func (t *tType) FuncByName(name string) Func {
+	for _, f := range t.funcs {
+		if f.GetName() == name {
+			return f
+		}
+	}
+	return nil
 }

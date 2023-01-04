@@ -116,12 +116,12 @@ func FuncInline(name string, args []gocoder.Arg, returns []gocoder.Arg, notes ..
 }
 
 // Struct func
-func Struct(name string, fs ...gocoder.Field) gocoder.Struct {
+func Struct(name string, fs ...gocoder.Field) gocoder.Type {
 	return gocoder.NewStruct(name, fs)
 }
 
 // Interface func
-func Interface(name string, fs ...gocoder.Func) gocoder.Interface {
+func Interface(name string, fs ...gocoder.Func) gocoder.Type {
 	return gocoder.NewInterface(name, fs)
 }
 

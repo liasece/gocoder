@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/liasece/gocoder"
-	"github.com/liasece/log"
 )
 
 func (c *CodeDecoder) GetNoteFromCommentGroup(_ DecoderContext, sts ...*ast.CommentGroup) []gocoder.Note {
@@ -14,8 +13,6 @@ func (c *CodeDecoder) GetNoteFromCommentGroup(_ DecoderContext, sts ...*ast.Comm
 		if st == nil {
 			continue
 		}
-		log.Info("GetNoteFromCommentGroup in", log.Any("st", st))
-		ast.Print(c.fset, st)
 		for _, comment := range st.List {
 			kind := gocoder.NoteKindLine
 			text := strings.TrimSpace(comment.Text)

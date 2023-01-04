@@ -209,13 +209,14 @@ func (t *tValue) field(name string) *tValue {
 	if noPtrT.Kind() != reflect.Struct {
 		panic("value isn't struct")
 	}
-	f, ok := noPtrT.FieldByName(name)
-	if !ok {
+	f := noPtrT.FieldByName(name)
+	if f == nil {
 		panic(fmt.Sprintf("value no target field: %s", name))
 	}
 	return &tValue{
-		Name:         t.Name + "." + f.Name,
-		IType:        NewType(f.Type),
+		TNoteCode:    TNoteCode{nil},
+		Name:         t.Name + "." + f.GetName(),
+		IType:        f.GetType(),
 		Left:         nil,
 		Action:       "",
 		Right:        nil,
@@ -243,6 +244,7 @@ func (t *tValue) Method(name string) Value {
 		// }
 		if noPtrT.RefType() == nil {
 			return &tValue{
+				TNoteCode:    TNoteCode{nil},
 				Left:         t,
 				Name:         name,
 				IType:        nil,
@@ -269,6 +271,7 @@ func (t *tValue) Method(name string) Value {
 				inTypes[i] = NewType(f.Type.In(i + 1))
 			}
 			return &tValue{
+				TNoteCode:    TNoteCode{nil},
 				Left:         t,
 				Name:         f.Name,
 				IType:        NewType(f.Type),
@@ -285,6 +288,7 @@ func (t *tValue) Method(name string) Value {
 		}
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Name:         name,
 		IType:        nil,
@@ -302,6 +306,7 @@ func (t *tValue) Method(name string) Value {
 
 func (t *tValue) ToArg() Arg {
 	return &tArg{
+		TNoteCode:      t.TNoteCode.Clone(),
 		Name:           t.Name,
 		Type:           t.Type(),
 		VariableLength: false,
@@ -334,6 +339,7 @@ func (t *tValue) Cast(i interface{}) Value {
 				panic("can't (" + noPtrCurent.String() + ") ConvertibleTo (" + noPtrTarget.String() + ")")
 			} else {
 				midValue = &tValue{
+					TNoteCode:    TNoteCode{nil},
 					Left:         target,
 					Action:       ValueActionCastType,
 					Right:        midValue,
@@ -351,6 +357,7 @@ func (t *tValue) Cast(i interface{}) Value {
 		}
 		if noPtrCurent.Kind() == noPtrTarget.Kind() && noPtrCurent.String() != noPtrTarget.String() {
 			midValue = &tValue{
+				TNoteCode:    TNoteCode{nil},
 				Left:         target,
 				Action:       ValueActionCastType,
 				Right:        midValue,
@@ -376,6 +383,7 @@ func (t *tValue) Assertion(i interface{}) Value {
 	if t.IsNilType() || target == nil || target.IsNil() {
 		if target != nil && target.String() != "" {
 			return &tValue{
+				TNoteCode:    TNoteCode{nil},
 				Left:         t,
 				Action:       ValueActionAssertionType,
 				Right:        t,
@@ -404,6 +412,7 @@ func (t *tValue) Assertion(i interface{}) Value {
 				panic("can't (" + noPtrTarget.String() + ") Implements (" + noPtrCurent.String() + ")")
 			} else {
 				return &tValue{
+					TNoteCode:    TNoteCode{nil},
 					Left:         t,
 					Action:       ValueActionAssertionType,
 					Right:        midValue,
@@ -453,6 +462,7 @@ func (t *tValue) Call(argsI ...interface{}) Value {
 		}
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionFuncCall,
 		CallArgs:     realArgs,
@@ -562,6 +572,7 @@ func (t *tValue) Set(i interface{}, opts ...*SetOption) Value {
 		right = right.Cast(t.Type())
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionSet,
 		Right:        right,
@@ -583,6 +594,7 @@ func (t *tValue) Dot(name string) Value {
 		panic("Value Dot FieldByName " + name + " not ok")
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionDot,
 		Name:         name,
@@ -609,6 +621,7 @@ func (t *tValue) AutoSet(i interface{}, opts ...*SetOption) Value {
 		t.IType = right.Type()
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionAutoSet,
 		Right:        right,
@@ -628,6 +641,7 @@ func (t *tValue) Index(i interface{}) Value {
 	v := MustToValue("", i)
 	left := t.UnPtr()
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         left,
 		Action:       ValueActionIndex,
 		Right:        v,
@@ -661,6 +675,7 @@ func (t *tValue) Returns() []Value {
 func (t *tValue) Add(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionAdd,
 		Right:        v,
@@ -679,6 +694,7 @@ func (t *tValue) Add(i interface{}) Value {
 func (t *tValue) Sub(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionSub,
 		Right:        v,
@@ -697,6 +713,7 @@ func (t *tValue) Sub(i interface{}) Value {
 func (t *tValue) Mul(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionMul,
 		Right:        v,
@@ -715,6 +732,7 @@ func (t *tValue) Mul(i interface{}) Value {
 func (t *tValue) Div(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionDiv,
 		Right:        v,
@@ -733,6 +751,7 @@ func (t *tValue) Div(i interface{}) Value {
 func (t *tValue) Equal(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionEqual,
 		Right:        v,
@@ -751,6 +770,7 @@ func (t *tValue) Equal(i interface{}) Value {
 func (t *tValue) GT(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionGT,
 		Right:        v,
@@ -769,6 +789,7 @@ func (t *tValue) GT(i interface{}) Value {
 func (t *tValue) LT(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionLT,
 		Right:        v,
@@ -787,6 +808,7 @@ func (t *tValue) LT(i interface{}) Value {
 func (t *tValue) GE(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionGE,
 		Right:        v,
@@ -805,6 +827,7 @@ func (t *tValue) GE(i interface{}) Value {
 func (t *tValue) LE(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionLE,
 		Right:        v,
@@ -823,6 +846,7 @@ func (t *tValue) LE(i interface{}) Value {
 func (t *tValue) NE(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionNE,
 		Right:        v,
@@ -840,6 +864,7 @@ func (t *tValue) NE(i interface{}) Value {
 
 func (t *tValue) Not() Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Action:       ValueActionNot,
 		Right:        t,
 		IType:        nil,
@@ -858,6 +883,7 @@ func (t *tValue) Not() Value {
 func (t *tValue) Or(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionOr,
 		Right:        v,
@@ -876,6 +902,7 @@ func (t *tValue) Or(i interface{}) Value {
 func (t *tValue) And(i interface{}) Value {
 	v := MustToValue("", i)
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Left:         t,
 		Action:       ValueActionAnd,
 		Right:        v,
@@ -898,6 +925,7 @@ func (t *tValue) UnPtr() Value {
 		}
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Action:       ValueActionUnPtr,
 		Right:        t,
 		IType:        t.Type().Elem(),
@@ -920,6 +948,7 @@ func (t *tValue) TakePtr() Value {
 		}
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Action:       ValueActionTakePtr,
 		Right:        t,
 		IType:        t.Type().TackPtr(),

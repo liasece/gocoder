@@ -9,14 +9,14 @@ import (
 	"github.com/liasece/log"
 )
 
-func (c *CodeDecoder) GetInterfaceFromASTInterfaceType(ctx DecoderContext, st *ast.InterfaceType) gocoder.Interface {
+func (c *CodeDecoder) GetInterfaceFromASTInterfaceType(ctx DecoderContext, st *ast.InterfaceType) gocoder.Type {
 	fs := c.GetFuncsFromASTFieldList(ctx, nil, st.Methods)
 	res := gocoder.NewInterface(ctx.GetBuildingItemName(), fs)
 	return res
 }
 
-func (c *CodeDecoder) GetInterface(name string) gocoder.Interface {
-	var resType gocoder.Interface
+func (c *CodeDecoder) GetInterface(name string) gocoder.Type {
+	var resType gocoder.Type
 	typeTypeName := name
 	typePkg := ""
 	if index := strings.LastIndex(name, "."); index > 0 && index < len(name)-1 {

@@ -260,31 +260,24 @@ func (w *tWriter) SetPkgTool(v PkgTool) {
 // Line func
 func (w *tWriter) WriteCode(c Codable) {
 	if noteCode, ok := c.(NoteCode); ok {
-		for _, note := range noteCode.Notes() {
-			w.Add(note)
+		if typ, ok := c.(Type); !ok || !typ.InReference() {
+			for _, note := range noteCode.Notes() {
+				w.Add(note)
+				if note.GetKind() != NoteKindLine {
+					w.Add("\n")
+				}
+			}
 		}
 	}
 	switch t := c.(type) {
 	case Receiver:
-		w.Add("(", t.GetName(), " ", t.GetType(), ")")
-	case Struct:
-		w.Line("type ", t.GetName(), " struct {")
-		fs := t.GetFields()
-		is := make([]interface{}, len(fs))
-		for i, v := range fs {
-			is[i] = v
-		}
-		w.Add(is...)
-		w.Line("}")
-	case Interface:
-		w.Line("type ", t.GetName(), " interface {")
-		fs := t.GetFuncs()
-		for _, v := range fs {
-			w.InterfaceFuncToCode(v)
-		}
-		w.Line("}")
+		typ := t.GetType().Clone()
+		typ.SetInReference(true)
+		w.Add("(", t.GetName(), " ", typ, ")")
 	case Field:
-		is := []interface{}{t.GetName(), " ", t.GetType()}
+		typ := t.GetType().Clone()
+		typ.SetInReference(true)
+		is := []interface{}{t.GetName(), " ", typ}
 		if t.GetTag() != "" {
 			is = append(is, " `"+t.GetTag()+"`")
 		}
@@ -292,11 +285,49 @@ func (w *tWriter) WriteCode(c Codable) {
 	case Note:
 		w.NoteToCode(t)
 	case Type:
-		str := typeStringOut(t, w.pkgTool, w.toPkg)
-		if str == "" && t.GetNamed() != "" {
-			w.AddStr(t.GetNamed() + " ")
+		if t.InReference() {
+			str := typeStringOut(t, w.pkgTool, w.toPkg)
+			if str == "" && t.GetNamed() != "" {
+				w.AddStr(t.GetNamed() + " ")
+			} else {
+				nextType := t.GetNext()
+				if nextType != nil {
+					nextType = nextType.Clone()
+					nextType.SetInReference(t.InReference())
+				}
+				w.Add(str, nextType)
+			}
 		} else {
-			w.Add(str, t.GetNext())
+			switch t.Kind() {
+			case reflect.Struct:
+				w.Line("type ", t.Name(), " struct {")
+				fs := t.GetFields()
+				is := make([]interface{}, len(fs))
+				for i, v := range fs {
+					is[i] = v
+				}
+				w.Add(is...)
+				w.Line("}")
+			case reflect.Interface:
+				w.Line("type ", t.Name(), " interface {")
+				fs := t.GetFuncs()
+				for _, v := range fs {
+					w.InterfaceFuncToCode(v)
+				}
+				w.Line("}")
+			default:
+				str := typeStringOut(t, w.pkgTool, w.toPkg)
+				if str == "" && t.GetNamed() != "" {
+					w.AddStr(t.GetNamed() + " ")
+				} else {
+					nextType := t.GetNext()
+					if nextType != nil {
+						nextType = nextType.Clone()
+						nextType.SetInReference(t.InReference())
+					}
+					w.Add(str, nextType)
+				}
+			}
 		}
 	case Value:
 		w.ValueToCode(t)
@@ -309,10 +340,12 @@ func (w *tWriter) WriteCode(c Codable) {
 	case PtrChecker:
 		w.PtrCheckerToCode(t)
 	case Arg:
+		typ := t.GetType().Clone()
+		typ.SetInReference(true)
 		if t.GetVariableLength() {
-			w.Add(t.GetName(), " ...", t.GetType())
+			w.Add(t.GetName(), " ...", typ)
 		} else {
-			w.Add(t.GetName(), " ", t.GetType())
+			w.Add(t.GetName(), " ", typ)
 		}
 	case Func:
 		w.FuncToCode(t)
@@ -338,7 +371,9 @@ func isValidPkgName(str string) bool {
 // Line func
 func (w *tWriter) ValueToCode(t Value) {
 	if t.GetIType() != nil {
-		typeStringOut(t.GetIType(), w.pkgTool, w.toPkg)
+		typ := t.GetIType().Clone()
+		typ.SetInReference(true)
+		typeStringOut(typ, w.pkgTool, w.toPkg)
 	}
 	switch t.GetAction() {
 	case ValueActionNone:
@@ -442,9 +477,6 @@ func (w *tWriter) ValueToCode(t Value) {
 			}
 		}
 	}
-	for _, note := range t.Notes() {
-		w.Add(note)
-	}
 }
 
 func (w *tWriter) CodeToCode(t Code) {
@@ -469,11 +501,6 @@ func (w *tWriter) FuncToCode(t Func) {
 			w.inline = oldInline
 		}()
 	}
-	if t.GetType() != FuncTypeInline {
-		if len(t.Notes()) > 0 {
-			w.AddNote(t.Notes()...)
-		}
-	}
 	w.Add("func")
 	if t.GetReceiver() != nil {
 		w.Add(t.GetReceiver())
@@ -495,11 +522,6 @@ func (w *tWriter) FuncToCode(t Func) {
 		w.InlineBlockCodes(t.GetCodes()...)
 	} else {
 		w.BlockCodes(t.GetCodes()...)
-	}
-	if t.GetType() == FuncTypeInline {
-		if len(t.Notes()) > 0 {
-			w.AddNote(t.Notes()...)
-		}
 	}
 }
 

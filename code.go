@@ -167,6 +167,7 @@ func NewNote(content string, kind NoteKind) Note {
 // NewValue func
 func NewValue(name string, t Type) Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Name:         name,
 		IType:        t,
 		Left:         nil,
@@ -185,6 +186,7 @@ func NewValue(name string, t Type) Value {
 // NewValueFunc func
 func NewValueFunc(name string, typ Type, argTypes []Type, returns []Type) Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Name:         name,
 		IType:        typ,
 		CallArgTypes: argTypes,
@@ -203,6 +205,7 @@ func NewValueFunc(name string, typ Type, argTypes []Type, returns []Type) Value 
 // NewValueNameI func
 func NewValueNameI(name string, i interface{}) Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Name:         name,
 		IType:        NewType(reflect.TypeOf(i)),
 		IValue:       i,
@@ -221,6 +224,7 @@ func NewValueNameI(name string, i interface{}) Value {
 // NewOnlyTypeValue func
 func NewOnlyTypeValue(t Type) Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		IType:        t,
 		Left:         nil,
 		Action:       "",
@@ -239,6 +243,7 @@ func NewOnlyTypeValue(t Type) Value {
 // NewValues func
 func NewValues(vs ...Value) Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Values:       vs,
 		Left:         nil,
 		Action:       "",
@@ -257,6 +262,7 @@ func NewValues(vs ...Value) Value {
 // NewValueNameRef func
 func NewValueNameRef(name string, t reflect.Type) Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Name:         name,
 		IType:        NewType(t),
 		Left:         nil,
@@ -275,6 +281,7 @@ func NewValueNameRef(name string, t reflect.Type) Value {
 // NewValueI func
 func NewValueI(i interface{}) Value {
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		IType:        NewType(reflect.TypeOf(i)),
 		IValue:       i,
 		Left:         nil,
@@ -303,36 +310,48 @@ func NewValueNone() Value {
 // NewTypeI func
 func NewTypeI(i interface{}) Type {
 	return &tType{
-		Type:   reflect.TypeOf(i),
-		Str:    "",
-		Pkg:    "",
-		Struct: nil,
-		Named:  "",
-		Next:   nil,
+		TNoteCode:   TNoteCode{nil},
+		Type:        reflect.TypeOf(i),
+		Str:         "",
+		Pkg:         "",
+		Named:       "",
+		Next:        nil,
+		inReference: false,
+		kind:        0,
+		funcs:       nil,
+		fields:      nil,
 	}
 }
 
 // NewTypeName func
 func NewTypeName(name string) Type {
 	return &tType{
-		Str:    name,
-		Type:   nil,
-		Pkg:    "",
-		Struct: nil,
-		Named:  "",
-		Next:   nil,
+		TNoteCode:   TNoteCode{nil},
+		Str:         name,
+		Type:        nil,
+		Pkg:         "",
+		Named:       "",
+		Next:        nil,
+		inReference: false,
+		kind:        0,
+		funcs:       nil,
+		fields:      nil,
 	}
 }
 
 // NewTypeDetail func
 func NewTypeDetail(pkg string, name string) Type {
 	return &tType{
-		Str:    name,
-		Pkg:    pkg,
-		Type:   nil,
-		Struct: nil,
-		Named:  "",
-		Next:   nil,
+		TNoteCode:   TNoteCode{nil},
+		Str:         name,
+		Pkg:         pkg,
+		Type:        nil,
+		Named:       "",
+		Next:        nil,
+		inReference: false,
+		kind:        0,
+		funcs:       nil,
+		fields:      nil,
 	}
 }
 
@@ -349,6 +368,7 @@ func NewIf(v Value, cs ...Codable) If {
 // NewArgI func
 func NewArgI(name string, i interface{}) Arg {
 	return &tArg{
+		TNoteCode:      TNoteCode{nil},
 		Name:           name,
 		Type:           NewTypeI(i),
 		VariableLength: false,
@@ -358,6 +378,7 @@ func NewArgI(name string, i interface{}) Arg {
 // NewArg func
 func NewArg(name string, typ Type, variableLength bool) Arg {
 	return &tArg{
+		TNoteCode:      TNoteCode{nil},
 		Name:           name,
 		Type:           typ,
 		VariableLength: variableLength,
@@ -375,51 +396,73 @@ func NewReceiver(name string, typ Type) Receiver {
 // NewFunc func
 func NewFunc(typ FuncType, name string, receiver Receiver, args []Arg, returns []Arg, notes ...Note) Func {
 	f := &tFunc{
-		Type:     typ,
-		Name:     name,
-		Receiver: receiver,
-		Args:     args,
-		Returns:  returns,
-		Codes:    nil,
+		TNoteCode: TNoteCode{nil},
+		Type:      typ,
+		Name:      name,
+		Receiver:  receiver,
+		Args:      args,
+		Returns:   returns,
+		Codes:     nil,
 	}
 	f.SetNotes(notes)
 	return f
 }
 
 // NewStruct func
-func NewStruct(name string, fs []Field) Struct {
-	return &tStruct{
-		ReName: name,
-		Fields: fs,
+func NewStruct(name string, fs []Field) Type {
+	return &tType{
+		TNoteCode:   TNoteCode{nil},
+		Named:       name,
+		fields:      fs,
+		inReference: false,
+		Str:         "",
+		Pkg:         "",
+		Type:        nil,
+		Next:        nil,
+		kind:        reflect.Struct,
+		funcs:       nil,
 	}
 }
 
 // NewInterface func
-func NewInterface(name string, fs []Func) Interface {
-	return &tInterface{
-		ReName: name,
-		Funcs:  fs,
+func NewInterface(name string, fs []Func) Type {
+	return &tType{
+		TNoteCode:   TNoteCode{nil},
+		Named:       name,
+		funcs:       fs,
+		inReference: false,
+		Str:         "",
+		Pkg:         "",
+		Type:        nil,
+		Next:        nil,
+		kind:        reflect.Interface,
+		fields:      nil,
 	}
 }
 
 // NewField func
 func NewField(name string, typ Type, tag string) Field {
 	return &tField{
-		Type:   typ,
-		ReName: name,
-		Tag:    tag,
+		TNoteCode: TNoteCode{nil},
+		Type:      typ,
+		ReName:    name,
+		Tag:       tag,
 	}
 }
 
 // NewType func
 func NewType(t reflect.Type) Type {
 	return &tType{
-		Type:   t,
-		Str:    "",
-		Pkg:    "",
-		Struct: nil,
-		Named:  "",
-		Next:   nil,
+		TNoteCode:   TNoteCode{nil},
+		Type:        t,
+		Str:         "",
+		Pkg:         "",
+		Named:       "",
+		Next:        nil,
+		inReference: false,
+		kind:        0,
+		funcs:       nil,
+		fields:      nil,
 	}
 }
 

@@ -11,8 +11,7 @@ import (
 
 func (c *CodeDecoder) GetTypeFromASTStructType(ctx DecoderContext, st *ast.StructType) gocoder.Type {
 	fields := c.GetStructFieldFromASTStruct(ctx, st)
-	gocoderStruct := gocoder.NewStruct(ctx.GetBuildingItemName(), fields)
-	res := gocoderStruct.GetType()
+	res := gocoder.NewStruct(ctx.GetBuildingItemName(), fields)
 	res.SetPkg(ctx.GetCurrentPkg())
 	return res
 }
@@ -55,7 +54,7 @@ func (c *CodeDecoder) getTypeFromASTNodeWithName(ctx DecoderContext, st ast.Node
 		return gocoder.NewType(reflect.MapOf(key.RefType(), value.RefType()))
 	case *ast.InterfaceType:
 		res := c.GetInterfaceFromASTInterfaceType(ctx, t)
-		return res.GetType()
+		return res
 	default:
 		log.Warn("name == typeName but type unknown", log.Any("name", ctx.GetBuildingItemName()), log.Any("type", reflect.TypeOf(t)))
 	}
@@ -117,7 +116,6 @@ func (c *CodeDecoder) GetType(fullTypeName string) gocoder.Type {
 				}
 			}
 			for _, astFile := range pkgV.Package.Files {
-				ast.Print(c.fset, astFile)
 				for _, astDecl := range astFile.Decls {
 					if astGenDecl, ok := astDecl.(*ast.GenDecl); ok {
 						ast.Walk(walker(func(node ast.Node) bool {

@@ -100,6 +100,7 @@ func (t *tFunc) Call(argsI ...interface{}) Value {
 		retType = t.Returns[0].GetType()
 	}
 	return &tValue{
+		TNoteCode:    TNoteCode{nil},
 		Action:       ValueActionFuncCall,
 		IType:        retType,
 		CallReturns:  t.GetReturnTypes(),

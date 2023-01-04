@@ -2,7 +2,6 @@ package ast
 
 import (
 	"go/ast"
-	"strings"
 	"time"
 
 	"github.com/liasece/gocoder"
@@ -16,11 +15,6 @@ func (w walker) Visit(node ast.Node) ast.Visitor {
 		return w
 	}
 	return nil
-}
-
-func pkgInReference(str string) string {
-	ss := strings.Split(str, "/")
-	return ss[len(ss)-1]
 }
 
 func TypeStringToZeroInterface(str string) gocoder.Type {

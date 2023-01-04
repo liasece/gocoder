@@ -6,6 +6,7 @@ type Note interface {
 	GetContent() string
 	GetKind() NoteKind
 	InterfaceForNote() bool
+	Clone() Note
 }
 
 type NoteCode interface {
@@ -18,6 +19,19 @@ var _ NoteCode = (*TNoteCode)(nil)
 
 type TNoteCode struct {
 	notes []Note
+}
+
+func (t *TNoteCode) Clone() TNoteCode {
+	res := TNoteCode{
+		notes: nil,
+	}
+	if t.notes != nil {
+		res.notes = make([]Note, len(t.notes))
+		for i, n := range t.notes {
+			res.notes[i] = n.Clone()
+		}
+	}
+	return res
 }
 
 func (t *TNoteCode) Notes() []Note {
@@ -47,6 +61,13 @@ var _ Note = (*tNote)(nil)
 type tNote struct {
 	Content string
 	Kind    NoteKind
+}
+
+func (t *tNote) Clone() Note {
+	return &tNote{
+		Content: t.Content,
+		Kind:    t.Kind,
+	}
 }
 
 func (t *tNote) WriteCode(w Writer) {
