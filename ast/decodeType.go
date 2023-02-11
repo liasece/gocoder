@@ -3,6 +3,7 @@ package ast
 import (
 	"go/ast"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/liasece/gocoder"
@@ -34,6 +35,10 @@ func (c *CodeDecoder) getTypeFromASTNodeWithName(ctx DecoderContext, st ast.Node
 		res := c.getTypeFromASTNodeWithName(ctx, t.Type)
 		if res != nil {
 			res.AddNotes(c.GetNoteFromCommentGroup(ctx, t.Comment, t.Doc)...)
+			if res.Name() != t.Name.Name {
+				res = res.WarpNamed(t.Name.Name)
+				res.SetPkg(ctx.GetCurrentPkg())
+			}
 		}
 		return res
 	case *ast.StructType:
@@ -86,6 +91,43 @@ func (c *CodeDecoder) GetTypeFromASTIdent(ctx DecoderContext, st *ast.Ident) goc
 	return res
 }
 
+func (c *CodeDecoder) SearchTypeNames(typePkg string, typeNameRegStr string) []string {
+	var res []string
+	if typeNameRegStr == "" {
+		return res
+	}
+	log.Debug("SearchTypes", log.Any("typeNameRegStr", typeNameRegStr))
+
+	typeNameReg := regexp.MustCompile(`^\**` + typeNameRegStr + `$`)
+	for _, pkgV := range c.pkgs.List {
+		if typePkg != "" {
+			if typePkg != pkgV.Name && typePkg != pkgV.Alias {
+				continue
+			}
+		}
+		for _, astFile := range pkgV.Package.Files {
+			for _, astDecl := range astFile.Decls {
+				if astGenDecl, ok := astDecl.(*ast.GenDecl); ok {
+					ast.Walk(walker(func(node ast.Node) bool {
+						if node == nil {
+							return true
+						}
+						ts, ok := node.(*ast.TypeSpec)
+						if !ok {
+							return true
+						}
+						if typeNameReg.MatchString(ts.Name.Name) {
+							res = append(res, ts.Name.Name)
+						}
+						return true
+					}), astGenDecl)
+				}
+			}
+		}
+	}
+	return res
+}
+
 func (c *CodeDecoder) GetType(fullTypeName string) gocoder.Type {
 	if fullTypeName == "" {
 		return nil
@@ -112,10 +154,8 @@ func (c *CodeDecoder) GetType(fullTypeName string) gocoder.Type {
 			typeTypeName = fullTypeName[index+1:]
 		}
 		for _, pkgV := range c.pkgs.List {
-			if typePkg != "" {
-				if typePkg != pkgV.Name && typePkg != pkgV.Alias {
-					continue
-				}
+			if typePkg != "" && typePkg != pkgV.Name && typePkg != pkgV.Alias {
+				continue
 			}
 			for _, astFile := range pkgV.Package.Files {
 				for _, astDecl := range astFile.Decls {
@@ -129,6 +169,7 @@ func (c *CodeDecoder) GetType(fullTypeName string) gocoder.Type {
 								return true
 							}
 							if ts.Name.Name == typeTypeName {
+								// log.Info("found type", log.Any("type", ts.Name.Name), log.Any("pkg", pkgV.Name), log.Any("file", astFile.Name.Name))
 								ctx := NewDecoderContextByAstFile(pkgV.Name, typeTypeName, astFile)
 								resType = c.GetTypeFromASTNode(ctx, ts)
 								if resType != nil {

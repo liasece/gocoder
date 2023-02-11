@@ -5,15 +5,18 @@ import (
 	"time"
 )
 
+type RenameTypeA string
+
 /* BigStruct is a struct for test */
 type BigStruct struct {
 	ID      string `json:"id"` // this entity id
 	SquadID string `bson:"squadID"`
 	UserID  string `bson:"userID"`
 	// this entity id
-	CreateAt time.Time  `bson:"createAt"`
-	Ready    bool       `bson:"ready"`
-	Next     *BigStruct `bson:"next"`
+	CreateAt    time.Time   `bson:"createAt"`
+	Ready       bool        `bson:"ready"`
+	Next        *BigStruct  `bson:"next"`
+	RenameTypeA RenameTypeA `bson:"renameTypeA"`
 }
 
 type IBigStruct interface {

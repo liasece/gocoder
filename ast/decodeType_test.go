@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/liasece/gocoder"
+	"github.com/magiconair/properties/assert"
 )
 
 func TestGetTypeFromSource(t *testing.T) {
@@ -22,4 +23,6 @@ func TestGetTypeFromSource(t *testing.T) {
 	nextType := res.FieldByName("Next").GetType().Elem()
 	nextType.SetInReference(false)
 	fmt.Printf("finish: %+v\n", nextType)
+	t.Error(res.FieldByName("RenameTypeA").GetType().GetNamed())
+	assert.Equal(t, res.FieldByName("RenameTypeA").GetType().String(), "RenameTypeA")
 }

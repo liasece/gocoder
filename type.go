@@ -26,7 +26,7 @@ type Type interface {
 	ShowString() string
 	CurrentCode() string
 	Package() string
-	PackageInReference() string
+	PackageInReference() string // like if pkg is `github.com/liasece/gocoder`, return `gocoder`
 	ConvertibleTo(i interface{}) bool
 	Implements(i interface{}) bool
 	NumField() int
@@ -38,6 +38,7 @@ type Type interface {
 	GetNamed() string
 	GetRowStr() string
 	SetNamed(string)
+	WarpNamed(named string) Type // build type like `type Foo SubType`, named is `Foo`
 	SetPkg(string)
 	GetNext() Type
 
@@ -66,9 +67,9 @@ type tType struct {
 	TNoteCode
 	reflect.Type
 
-	Str   string
-	Pkg   string
-	Named string
+	Str   string // like `*` or `[]` or `map` or `struct` or `interface` or `int` or `int64` or `string` or `Time`
+	Pkg   string // like `time` or `github.com/liasece/gocoder`
+	Named string // like `Foo` in `type Foo string`
 	Next  Type
 
 	// struct
@@ -367,10 +368,10 @@ func (t *tType) String() string {
 		res += str
 	}
 	if res == "" {
-		if t.Next != nil {
-			res = t.Next.String()
-		} else {
+		if t.Named != "" {
 			res = t.Named
+		} else if t.Next != nil {
+			res = t.Next.String()
 		}
 	}
 	return res
@@ -380,6 +381,9 @@ func (t *tType) ShowString() string {
 	head := ""
 	if t.Package() != "" {
 		head = t.Package() + "."
+	}
+	if t.Named != "" {
+		return head + t.Named
 	}
 	if t.Str != "" {
 		res := head + t.Str
@@ -479,6 +483,9 @@ func (t *tType) Kind() reflect.Kind {
 	}
 	if t.kind == reflect.Struct && t.fields != nil {
 		return reflect.Struct
+	}
+	if t.Type == nil && t.Str == "" && t.Named != "" && t.Next != nil {
+		return t.Next.Kind()
 	}
 	return t.RefType().Kind()
 }
@@ -594,4 +601,19 @@ func (t *tType) FuncByName(name string) Func {
 		}
 	}
 	return nil
+}
+
+func (t *tType) WarpNamed(named string) Type {
+	return &tType{
+		TNoteCode:   TNoteCode{nil},
+		Type:        nil,
+		Str:         "",
+		Pkg:         "",
+		Named:       named,
+		Next:        t,
+		inReference: t.inReference,
+		kind:        t.kind,
+		fields:      nil,
+		funcs:       nil,
+	}
 }
